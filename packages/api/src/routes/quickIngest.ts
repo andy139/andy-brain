@@ -3,11 +3,18 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
+import { execFile } from "child_process";
+import { promisify } from "util";
+import { readFile, unlink, mkdtemp } from "fs/promises";
+import { tmpdir } from "os";
+import { join } from "path";
 import { authMiddleware } from "../middleware/auth.js";
 import { generateEmbeddings } from "../lib/embeddings.js";
 import { chunkText } from "../lib/chunker.js";
 import { supabase } from "../lib/supabase.js";
 import { getPineconeIndex } from "../lib/pinecone.js";
+
+const execFileAsync = promisify(execFile);
 
 const app = new Hono();
 
@@ -25,24 +32,92 @@ function detectSourceType(url: string): "x" | "tiktok" | "article" {
 }
 
 async function fetchTikTokContent(url: string): Promise<string> {
-  // Follow redirects to resolve vm.tiktok.com short links → canonical URL
-  let canonicalUrl = url;
-  try {
-    const head = await fetch(url, { method: "HEAD", redirect: "follow", signal: AbortSignal.timeout(5_000), headers: { "User-Agent": "Mozilla/5.0 (compatible; andy-brain/1.0)" } });
-    if (head.url) canonicalUrl = head.url;
-  } catch { /* use original */ }
-
-  const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(canonicalUrl)}`;
-  const res = await fetch(oembedUrl, {
+  // Step 1: get direct video URL via TikWM (free, no auth)
+  const tikwmRes = await fetch(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; andy-brain/1.0)" },
-    signal: AbortSignal.timeout(8_000),
+    signal: AbortSignal.timeout(10_000),
   });
-  if (!res.ok) throw new Error(`oEmbed HTTP ${res.status}`);
-  const data = await res.json() as { title?: string; author_name?: string };
+  const tikwmData = await tikwmRes.json() as {
+    code?: number;
+    data?: { play?: string; title?: string; author?: { nickname?: string } };
+  };
+
+  const caption = tikwmData.data?.title ?? "";
+  const author = tikwmData.data?.author?.nickname ?? "";
+  const videoUrl = tikwmData.data?.play;
+
+  // Step 2: use yt-dlp to download audio, then transcribe with Groq Whisper
+  let transcript = "";
+  const groqKey = process.env.GROQ_API_KEY;
+  if (groqKey) {
+    let tmpDir: string | null = null;
+    try {
+      tmpDir = await mkdtemp(join(tmpdir(), "tiktok-"));
+      const audioPath = join(tmpDir, "audio.m4a");
+
+      await execFileAsync("yt-dlp", [
+        "--no-playlist",
+        "-x",                         // extract audio only
+        "--audio-format", "m4a",
+        "--audio-quality", "0",
+        "-o", audioPath,
+        "--no-progress",
+        "--quiet",
+        url,
+      ], { timeout: 30_000 });
+
+      const audioBuffer = await readFile(audioPath);
+      const formData = new FormData();
+      formData.append("file", new Blob([audioBuffer], { type: "audio/m4a" }), "audio.m4a");
+      formData.append("model", "whisper-large-v3-turbo");
+      formData.append("response_format", "text");
+
+      const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${groqKey}` },
+        body: formData,
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (groqRes.ok) {
+        transcript = (await groqRes.text()).trim();
+      } else {
+        console.warn("Groq Whisper error:", groqRes.status, await groqRes.text());
+      }
+    } catch (err) {
+      console.warn("TikTok yt-dlp/Whisper transcription failed:", err);
+    } finally {
+      if (tmpDir) {
+        try { await unlink(join(tmpDir, "audio.m4a")); } catch { /* ignore */ }
+      }
+    }
+  }
+
+  // Step 3: build content — transcript preferred, caption as fallback
   const parts: string[] = [];
-  if (data.title) parts.push(data.title);
-  if (data.author_name) parts.push(`Posted by: @${data.author_name}`);
-  if (!parts.length) throw new Error("oEmbed returned no usable content");
+  if (transcript) {
+    parts.push(`Transcript: ${transcript}`);
+  }
+  if (caption) {
+    parts.push(`Caption: ${caption}`);
+  }
+  if (author) {
+    parts.push(`Posted by: @${author}`);
+  }
+
+  if (!parts.length) {
+    // Last resort: oEmbed caption only
+    const oembedRes = await fetch(
+      `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`,
+      { headers: { "User-Agent": "Mozilla/5.0 (compatible; andy-brain/1.0)" }, signal: AbortSignal.timeout(8_000) }
+    );
+    if (oembedRes.ok) {
+      const oembed = await oembedRes.json() as { title?: string; author_name?: string };
+      if (oembed.title) parts.push(oembed.title);
+      if (oembed.author_name) parts.push(`Posted by: @${oembed.author_name}`);
+    }
+  }
+
+  if (!parts.length) throw new Error("Could not extract any TikTok content");
   return parts.join("\n");
 }
 
@@ -53,30 +128,29 @@ app.post("/ingest/quick", authMiddleware, zValidator("json", quickIngestSchema),
 
   // Extract readable content from the URL
   let content = "";
-  try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "andy-brain/1.0 (+https://github.com/andy)" },
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (res.ok) {
-      const html = await res.text();
-      const dom = new JSDOM(html, { url });
-      const reader = new Readability(dom.window.document);
-      const article = reader.parse();
-      if (article?.textContent?.trim()) {
-        content = article.textContent.trim();
-      }
-    }
-  } catch (err) {
-    console.warn("Quick ingest: extraction failed:", err);
-  }
-
-  // TikTok fallback: use public oEmbed API to get caption + author
-  if (!content && source_type === "tiktok") {
+  if (source_type === "tiktok") {
     try {
       content = await fetchTikTokContent(url);
     } catch (err) {
-      console.warn("TikTok oEmbed fallback failed:", err);
+      console.warn("TikTok content extraction failed:", err);
+    }
+  } else {
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": "andy-brain/1.0 (+https://github.com/andy)" },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (res.ok) {
+        const html = await res.text();
+        const dom = new JSDOM(html, { url });
+        const reader = new Readability(dom.window.document);
+        const article = reader.parse();
+        if (article?.textContent?.trim()) {
+          content = article.textContent.trim();
+        }
+      }
+    } catch (err) {
+      console.warn("Quick ingest: extraction failed:", err);
     }
   }
 

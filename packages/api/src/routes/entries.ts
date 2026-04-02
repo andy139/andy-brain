@@ -51,15 +51,21 @@ app.get("/entries", zValidator("query", listSchema), async (c) => {
 app.delete("/entries/:id", authMiddleware, async (c) => {
   const id = c.req.param("id");
 
-  // Delete from Supabase first
-  const { error } = await supabase
+  // Delete from Supabase — use .select() so we can detect RLS silent failures
+  const { data: deleted, error } = await supabase
     .from("knowledge_entries")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
 
   if (error) {
     console.error("Supabase delete error:", error);
     return c.json({ error: "Failed to delete entry" }, 500);
+  }
+
+  if (!deleted || deleted.length === 0) {
+    console.error("Delete silently failed — RLS may be blocking deletes with anon key");
+    return c.json({ error: "Delete failed — check Supabase RLS policies" }, 500);
   }
 
   // Delete all Pinecone vectors for this entry by metadata filter.
