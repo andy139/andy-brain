@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", monospace;
+}
+
+/* Smooth scrollbar for the message list */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(55 65 81) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgb(55 65 81);
+  border-radius: 3px;
+}

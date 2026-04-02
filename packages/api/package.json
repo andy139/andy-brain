@@ -1,0 +1,32 @@
+{
+  "name": "@andy-brain/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env.local src/server.ts",
+    "build": "tsc --noEmit",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.0",
+    "@anthropic-ai/sdk": "^0.30.0",
+    "@hono/zod-validator": "^0.4.1",
+    "@mozilla/readability": "^0.5.0",
+    "@pinecone-database/pinecone": "^3.0.3",
+    "@supabase/supabase-js": "^2.46.0",
+    "hono": "^4.6.0",
+    "jsdom": "^25.0.1",
+    "openai": "^4.70.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^21.1.7",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.0.0"
+  }
+}
