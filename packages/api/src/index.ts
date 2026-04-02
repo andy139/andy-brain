@@ -5,6 +5,7 @@ import ingestRoute from "./routes/ingest.js";
 import queryRoute from "./routes/query.js";
 import entriesRoute from "./routes/entries.js";
 import quickIngestRoute from "./routes/quickIngest.js";
+import pdfIngestRoute from "./routes/pdfIngest.js";
 
 const app = new Hono();
 
@@ -20,6 +21,7 @@ app.use(
 
 app.route("/api", ingestRoute);
 app.route("/api", quickIngestRoute);
+app.route("/api", pdfIngestRoute);
 app.route("/api", queryRoute);
 app.route("/api", entriesRoute);
 

@@ -27,6 +27,7 @@ app.post("/ingest", authMiddleware, zValidator("json", ingestSchema), async (c) 
     try {
       const res = await fetch(source_url, {
         headers: { "User-Agent": "andy-brain/1.0 (+https://github.com/andy)" },
+        signal: AbortSignal.timeout(10_000),
       });
       if (res.ok) {
         const html = await res.text();

@@ -1,8 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { Readability } from "@mozilla/readability";
-import { JSDOM } from "jsdom";
+import Anthropic from "@anthropic-ai/sdk";
 import { authMiddleware } from "../middleware/auth.js";
 import { generateEmbeddings } from "../lib/embeddings.js";
 import { chunkText } from "../lib/chunker.js";
@@ -10,56 +9,61 @@ import { supabase } from "../lib/supabase.js";
 import { getPineconeIndex } from "../lib/pinecone.js";
 
 const app = new Hono();
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const quickIngestSchema = z.object({
-  url: z.string().url("url must be a valid URL"),
+const pdfSchema = z.object({
+  data: z.string().min(1, "data is required"), // base64-encoded PDF
+  filename: z.string().min(1),
   tags: z.array(z.string()).optional().default([]),
   notes: z.string().optional(),
 });
 
-function detectSourceType(url: string): "x" | "tiktok" | "article" {
-  const host = new URL(url).hostname.replace(/^www\./, "");
-  if (host === "x.com" || host === "twitter.com") return "x";
-  if (host === "tiktok.com") return "tiktok";
-  return "article";
-}
+app.post("/ingest/pdf", authMiddleware, zValidator("json", pdfSchema), async (c) => {
+  const { data, filename, tags, notes } = c.req.valid("json");
 
-app.post("/ingest/quick", authMiddleware, zValidator("json", quickIngestSchema), async (c) => {
-  const { url, tags, notes } = c.req.valid("json");
+  if (!filename.toLowerCase().endsWith(".pdf")) {
+    return c.json({ error: "File must be a PDF" }, 400);
+  }
 
-  const source_type = detectSourceType(url);
-
-  // Extract readable content from the URL
+  // Use Claude to extract text from the PDF
   let content = "";
   try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "andy-brain/1.0 (+https://github.com/andy)" },
-      signal: AbortSignal.timeout(10_000),
+    const msg = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 4096,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "document",
+              source: { type: "base64", media_type: "application/pdf", data },
+            },
+            {
+              type: "text",
+              text: "Extract all text from this PDF document. Output only the raw text content, preserving structure where helpful. No commentary or preamble.",
+            },
+          ],
+        },
+      ],
     });
-    if (res.ok) {
-      const html = await res.text();
-      const dom = new JSDOM(html, { url });
-      const reader = new Readability(dom.window.document);
-      const article = reader.parse();
-      if (article?.textContent?.trim()) {
-        content = article.textContent.trim();
-      }
-    }
+    content = (msg.content[0] as { text: string }).text.trim();
   } catch (err) {
-    console.warn("Quick ingest: extraction failed:", err);
+    console.error("PDF extraction error:", err);
+    return c.json({ error: "Failed to extract text from PDF" }, 422);
   }
 
   if (!content) {
-    return c.json({ error: "Could not extract content from URL" }, 422);
+    return c.json({ error: "PDF contains no extractable text" }, 422);
   }
 
   const { data: entry, error: insertError } = await supabase
     .from("knowledge_entries")
     .insert({
       content,
-      source_url: url,
-      source_type,
-      tags: tags ?? [],
+      source_url: null,
+      source_type: "other",
+      tags,
       notes: notes ?? null,
     })
     .select()
@@ -90,8 +94,8 @@ app.post("/ingest/quick", authMiddleware, zValidator("json", quickIngestSchema),
     metadata: {
       entry_id: entry.id,
       chunk_index: i,
-      source_type,
-      tags: tags ?? [],
+      source_type: "other",
+      tags,
       text_preview: chunk.slice(0, 200),
     },
   }));
@@ -103,7 +107,10 @@ app.post("/ingest/quick", authMiddleware, zValidator("json", quickIngestSchema),
     return c.json({ error: "Failed to store embeddings" }, 500);
   }
 
-  return c.json({ entry_id: entry.id, chunks_created: chunks.length }, 201);
+  return c.json(
+    { entry_id: entry.id, chunks_created: chunks.length, filename },
+    201
+  );
 });
 
 export default app;

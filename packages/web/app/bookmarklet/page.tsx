@@ -8,13 +8,18 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
 function buildBookmarklet(apiKey: string, apiUrl: string): string {
   return (
     `javascript:(function(){` +
-    `fetch('${apiUrl}/api/ingest/quick',{` +
+    `var h=document.documentElement.hostname||location.hostname;` +
+    `var st=h==='x.com'||h==='twitter.com'?'x':h.includes('tiktok.com')?'tiktok':'article';` +
+    `var el=document.querySelector('article')||document.querySelector('main')||document.body;` +
+    `var txt=(el.innerText||'').replace(/\\s+/g,' ').trim().slice(0,15000);` +
+    `if(!txt){return alert('Nothing to save — page has no readable text.');}` +
+    `fetch('${apiUrl}/api/ingest',{` +
     `method:'POST',` +
     `headers:{'Content-Type':'application/json','x-api-key':'${apiKey}'},` +
-    `body:JSON.stringify({url:location.href})` +
+    `body:JSON.stringify({content:txt,source_url:location.href,source_type:st})` +
     `}).then(function(r){return r.json()}).then(function(d){` +
-    `alert(d.entry_id?'Saved ('+d.chunks_created+' chunks)':'Error: '+(d.error||'unknown'));` +
-    `}).catch(function(){alert('Network error — is the API running?')});` +
+    `alert(d.entry_id?'Saved! ('+d.chunks_created+' chunks)':'Error: '+(d.error||'unknown'));` +
+    `}).catch(function(e){alert('Network error: '+e);});` +
     `})()`
   );
 }
