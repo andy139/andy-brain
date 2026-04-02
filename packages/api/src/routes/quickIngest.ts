@@ -20,8 +20,30 @@ const quickIngestSchema = z.object({
 function detectSourceType(url: string): "x" | "tiktok" | "article" {
   const host = new URL(url).hostname.replace(/^www\./, "");
   if (host === "x.com" || host === "twitter.com") return "x";
-  if (host === "tiktok.com") return "tiktok";
+  if (host.includes("tiktok.com")) return "tiktok";
   return "article";
+}
+
+async function fetchTikTokContent(url: string): Promise<string> {
+  // Follow redirects to resolve vm.tiktok.com short links → canonical URL
+  let canonicalUrl = url;
+  try {
+    const head = await fetch(url, { method: "HEAD", redirect: "follow", signal: AbortSignal.timeout(5_000), headers: { "User-Agent": "Mozilla/5.0 (compatible; andy-brain/1.0)" } });
+    if (head.url) canonicalUrl = head.url;
+  } catch { /* use original */ }
+
+  const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(canonicalUrl)}`;
+  const res = await fetch(oembedUrl, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; andy-brain/1.0)" },
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (!res.ok) throw new Error(`oEmbed HTTP ${res.status}`);
+  const data = await res.json() as { title?: string; author_name?: string };
+  const parts: string[] = [];
+  if (data.title) parts.push(data.title);
+  if (data.author_name) parts.push(`Posted by: @${data.author_name}`);
+  if (!parts.length) throw new Error("oEmbed returned no usable content");
+  return parts.join("\n");
 }
 
 app.post("/ingest/quick", authMiddleware, zValidator("json", quickIngestSchema), async (c) => {
@@ -49,14 +71,26 @@ app.post("/ingest/quick", authMiddleware, zValidator("json", quickIngestSchema),
     console.warn("Quick ingest: extraction failed:", err);
   }
 
+  // TikTok fallback: use public oEmbed API to get caption + author
+  if (!content && source_type === "tiktok") {
+    try {
+      content = await fetchTikTokContent(url);
+    } catch (err) {
+      console.warn("TikTok oEmbed fallback failed:", err);
+    }
+  }
+
   if (!content) {
     return c.json({ error: "Could not extract content from URL" }, 422);
   }
 
+  // Include notes in the embedded content so they're searchable
+  const fullContent = notes ? `${content}\n\nMy notes: ${notes}` : content;
+
   const { data: entry, error: insertError } = await supabase
     .from("knowledge_entries")
     .insert({
-      content,
+      content: fullContent,
       source_url: url,
       source_type,
       tags: tags ?? [],
@@ -70,7 +104,7 @@ app.post("/ingest/quick", authMiddleware, zValidator("json", quickIngestSchema),
     return c.json({ error: "Failed to store entry" }, 500);
   }
 
-  const chunks = chunkText(content);
+  const chunks = chunkText(fullContent);
   if (chunks.length === 0) {
     return c.json({ error: "Content produced no chunks" }, 422);
   }

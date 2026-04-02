@@ -8,7 +8,19 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
 function buildBookmarklet(apiKey: string, apiUrl: string): string {
   return (
     `javascript:(function(){` +
-    `var h=document.documentElement.hostname||location.hostname;` +
+    // PDF branch: Chrome PDF viewer sets document.contentType, or URL ends in .pdf
+    `var isPdf=document.contentType==='application/pdf'||location.href.toLowerCase().split('?')[0].endsWith('.pdf');` +
+    `if(isPdf){` +
+    `fetch('${apiUrl}/api/ingest/pdf/url',{` +
+    `method:'POST',` +
+    `headers:{'Content-Type':'application/json','x-api-key':'${apiKey}'},` +
+    `body:JSON.stringify({url:location.href,tags:[]})` +
+    `}).then(function(r){return r.json();})` +
+    `.then(function(d){alert(d.entry_id?'PDF saved! ('+d.chunks_created+' chunks)':'Error: '+(d.error||'unknown'));})` +
+    `.catch(function(e){alert('PDF error: '+e);});` +
+    `return;}` +
+    // Regular page branch
+    `var h=location.hostname;` +
     `var st=h==='x.com'||h==='twitter.com'?'x':h.includes('tiktok.com')?'tiktok':'article';` +
     `var el=document.querySelector('article')||document.querySelector('main')||document.body;` +
     `var txt=(el.innerText||'').replace(/\\s+/g,' ').trim().slice(0,15000);` +
@@ -33,13 +45,17 @@ export default function BookmarkletPage() {
   async function copyShortcut() {
     const shortcutText = `iOS Shortcut setup:
 1. Open the Shortcuts app → New Shortcut
-2. Add action: "Get Contents of URL"
+2. Add action: "Ask for Input"
+   - Prompt: "Quick note? (optional — what did you learn?)"
+   - Allow Multiple Lines: on
+3. Add action: "Get Contents of URL"
    - URL: ${API_URL}/api/ingest/quick
    - Method: POST
    - Headers: Content-Type = application/json, x-api-key = ${apiKey || "YOUR_KEY"}
-   - Body: JSON → { "url": "Shortcut Input" }
-3. Add action: "Show Notification" with the result
-4. Share sheet: enable "Safari" as input type`;
+   - Body: JSON → { "url": "Shortcut Input", "notes": "Provided Input" }
+4. Add action: "Show Notification" with the result
+5. Tap shortcut name → Share Sheet → enable "URLs" as input type
+   (works with Safari AND the TikTok app)`;
     await navigator.clipboard.writeText(shortcutText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -119,12 +135,18 @@ export default function BookmarkletPage() {
         <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-5">
           <h2 className="text-sm font-semibold text-white mb-1">iOS Shortcut</h2>
           <p className="text-xs text-gray-500 mb-4">
-            Save from Safari on iPhone via the Share Sheet.
+            Save from Safari or the <span className="text-gray-300">TikTok app</span> via the Share Sheet. Optionally jot a quick note about what you learned.
           </p>
 
           <ol className="space-y-2 text-xs text-gray-400 mb-4">
             <li><span className="text-gray-600 mr-1.5">1.</span>Open the <span className="text-gray-200">Shortcuts</span> app → tap <span className="text-gray-200">+</span> → New Shortcut</li>
-            <li><span className="text-gray-600 mr-1.5">2.</span>Add action: <span className="text-gray-200">Get Contents of URL</span></li>
+            <li><span className="text-gray-600 mr-1.5">2.</span>Add action: <span className="text-gray-200">Ask for Input</span>
+              <span className="ml-3 block mt-1 font-mono text-gray-500 bg-gray-950 rounded px-2 py-1.5 leading-relaxed">
+                Prompt: &quot;Quick note? (optional)&quot;<br />
+                Allow Multiple Lines: on
+              </span>
+            </li>
+            <li><span className="text-gray-600 mr-1.5">3.</span>Add action: <span className="text-gray-200">Get Contents of URL</span></li>
             <li>
               <span className="text-gray-600 mr-1.5"> </span>
               <span className="ml-3 block mt-1 font-mono text-gray-500 bg-gray-950 rounded px-2 py-1.5 leading-relaxed">
@@ -134,11 +156,12 @@ export default function BookmarkletPage() {
                 {"  "}Content-Type: application/json<br />
                 {"  "}x-api-key: {apiKey || "YOUR_KEY"}<br />
                 Body: JSON<br />
-                {"  "}url: Shortcut Input
+                {"  "}url: Shortcut Input<br />
+                {"  "}notes: Provided Input
               </span>
             </li>
-            <li><span className="text-gray-600 mr-1.5">3.</span>Add action: <span className="text-gray-200">Show Notification</span> with the output</li>
-            <li><span className="text-gray-600 mr-1.5">4.</span>Tap the shortcut name → <span className="text-gray-200">Share Sheet</span> → enable <span className="text-gray-200">Safari</span></li>
+            <li><span className="text-gray-600 mr-1.5">4.</span>Add action: <span className="text-gray-200">Show Notification</span> with the output</li>
+            <li><span className="text-gray-600 mr-1.5">5.</span>Tap the shortcut name → <span className="text-gray-200">Share Sheet</span> → enable <span className="text-gray-200">URLs</span> <span className="text-gray-600">(works with Safari + TikTok app)</span></li>
           </ol>
 
           <button
