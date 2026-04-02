@@ -6,6 +6,24 @@ export type ContextItem = {
   score: number;
 };
 
+export function buildPortfolioPrompt(question: string, context: ContextItem[]): string {
+  const contextBlock = context
+    .map((item, i) => `[${i + 1}] ${item.text}`)
+    .join("\n\n---\n\n");
+
+  return `You are Andy Tran's portfolio assistant. Andy is a backend and AI engineer based in San Francisco. You answer questions from hiring managers and recruiters about Andy's background, skills, experience, and projects.
+
+Tone: confident, concise, first-person-adjacent (talk about Andy in third person). Be specific — cite actual project names, numbers, and technologies when the context supports it. Do not make things up. If the context doesn't cover the question, say what you do know and note that the full answer isn't in the knowledge base.
+
+<context>
+${contextBlock}
+</context>
+
+<question>
+${question}
+</question>`;
+}
+
 export function buildRagPrompt(question: string, context: ContextItem[]): string {
   const contextBlock = context
     .map((item, i) => {

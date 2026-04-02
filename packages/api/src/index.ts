@@ -6,6 +6,7 @@ import queryRoute from "./routes/query.js";
 import entriesRoute from "./routes/entries.js";
 import quickIngestRoute from "./routes/quickIngest.js";
 import pdfIngestRoute from "./routes/pdfIngest.js";
+import portfolioQueryRoute from "./routes/portfolioQuery.js";
 
 const app = new Hono();
 
@@ -24,6 +25,7 @@ app.route("/api", quickIngestRoute);
 app.route("/api", pdfIngestRoute);
 app.route("/api", queryRoute);
 app.route("/api", entriesRoute);
+app.route("/api", portfolioQueryRoute);
 
 app.get("/health", (c) => c.json({ status: "ok", ts: new Date().toISOString() }));
 
