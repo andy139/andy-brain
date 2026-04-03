@@ -4,7 +4,7 @@ A production RAG (Retrieval-Augmented Generation) system I built to capture, sea
 
 The `/portfolio` route is a recruiter-facing AI assistant that answers questions about my background, experience, and projects. It's live on my portfolio site.
 
-**Live demo:** [andytran.dev](https://andytran.dev) → Andy's Brain section
+**Live demo:** [andytran.tech](https://andytran.tech) → Andy's Brain section
 
 ---
 
@@ -129,4 +129,4 @@ NEXT_PUBLIC_API_URL=     # Deployed API URL
 
 ---
 
-Built by [Andy Tran](https://linkedin.com/in/andytran1140)
+Built by [Andy Tran](https://andytran.tech) · [LinkedIn](https://linkedin.com/in/andytran1140)
