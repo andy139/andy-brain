@@ -8,12 +8,20 @@ const voyage = new OpenAI({
 
 const EMBEDDING_MODEL = "voyage-3"; // 1024 dimensions
 
-export async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await voyage.embeddings.create({
-    model: EMBEDDING_MODEL,
-    input: text,
-  });
-  return response.data[0].embedding;
+export async function generateEmbedding(text: string, retries = 3): Promise<number[]> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const response = await voyage.embeddings.create({ model: EMBEDDING_MODEL, input: text });
+      return response.data[0].embedding;
+    } catch (err: any) {
+      if (err?.status === 429 && attempt < retries - 1) {
+        await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Embedding failed after retries");
 }
 
 /**
