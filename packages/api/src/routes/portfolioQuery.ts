@@ -18,8 +18,16 @@ const portfolioQuerySchema = z.object({
   question: z.string().min(1).max(500),
 });
 
-// Public endpoint — no auth required — used by the portfolio site
+app.options("/portfolio/chat", (c) => {
+  c.header("Access-Control-Allow-Origin", "*");
+  c.header("Access-Control-Allow-Methods", "POST, OPTIONS");
+  c.header("Access-Control-Allow-Headers", "Content-Type");
+  return c.text("", 204);
+});
+
+// Public endpoint — no auth required — open CORS since it's intentionally public
 app.post("/portfolio/chat", zValidator("json", portfolioQuerySchema), async (c) => {
+  c.header("Access-Control-Allow-Origin", "*");
   const { question } = c.req.valid("json");
 
   let questionEmbedding: number[];
