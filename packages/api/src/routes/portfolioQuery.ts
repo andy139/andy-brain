@@ -9,8 +9,11 @@ import { buildPortfolioPrompt, type ContextItem } from "../lib/prompts.js";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// Simple in-memory cache — avoids re-embedding the same question twice
+// Embedding cache — avoids re-embedding the same question twice
 const embeddingCache = new Map<string, number[]>();
+
+// Response cache — identical questions get replayed instantly (knowledge base is static)
+const responseCache = new Map<string, string>();
 
 const app = new Hono();
 
@@ -29,10 +32,16 @@ app.options("/portfolio/chat", (c) => {
 app.post("/portfolio/chat", zValidator("json", portfolioQuerySchema), async (c) => {
   c.header("Access-Control-Allow-Origin", "*");
   const { question } = c.req.valid("json");
+  const cacheKey = question.trim().toLowerCase();
+
+  // Cache hit — stream the cached response instantly
+  if (responseCache.has(cacheKey)) {
+    const cached = responseCache.get(cacheKey)!;
+    return stream(c, async (s) => { await s.write(cached); });
+  }
 
   let questionEmbedding: number[];
   try {
-    const cacheKey = question.trim().toLowerCase();
     if (embeddingCache.has(cacheKey)) {
       questionEmbedding = embeddingCache.get(cacheKey)!;
     } else {
@@ -100,7 +109,9 @@ app.post("/portfolio/chat", zValidator("json", portfolioQuerySchema), async (c) 
 
       const raw = followupRes.content[0].type === "text" ? followupRes.content[0].text.trim() : "[]";
       const followups = JSON.parse(raw.replace(/^```json\n?/, "").replace(/\n?```$/, ""));
-      await s.write(`\n\n__FOLLOWUPS__${JSON.stringify(followups)}`);
+      const sentinel = `\n\n__FOLLOWUPS__${JSON.stringify(followups)}`;
+      await s.write(sentinel);
+      responseCache.set(cacheKey, fullText + sentinel);
     } catch (err) {
       console.error("Streaming error:", err);
       await s.write("\n\n[Error generating response]");
