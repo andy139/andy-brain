@@ -16,8 +16,9 @@ const allowedOrigins = [
   ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim()) : []),
 ];
 
+// Portfolio endpoint is public — handled with its own * CORS headers
 app.use(
-  "*",
+  /^(?!\/api\/portfolio)/,
   cors({
     origin: allowedOrigins.length > 0
       ? (origin) => (allowedOrigins.includes(origin) ? origin : allowedOrigins[0])
