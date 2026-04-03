@@ -11,10 +11,17 @@ import portfolioQueryRoute from "./routes/portfolioQuery.js";
 const app = new Hono();
 
 app.use("*", logger());
+const allowedOrigins = [
+  ...(process.env.ALLOWED_ORIGIN ? [process.env.ALLOWED_ORIGIN] : []),
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim()) : []),
+];
+
 app.use(
   "*",
   cors({
-    origin: process.env.ALLOWED_ORIGIN ?? "*",
+    origin: allowedOrigins.length > 0
+      ? (origin) => (allowedOrigins.includes(origin) ? origin : allowedOrigins[0])
+      : "*",
     allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "x-api-key"],
   })
