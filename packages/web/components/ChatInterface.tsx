@@ -18,6 +18,7 @@ export default function ChatInterface() {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const inFlightRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -28,16 +29,21 @@ export default function ChatInterface() {
 
   const sendMessage = async () => {
     const question = input.trim();
-    if (!question || isStreaming) return;
+    if (!question || inFlightRef.current) return;
+    inFlightRef.current = true;
 
     setInput("");
     setIsStreaming(true);
 
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: question },
-      { role: "assistant", content: "", sources: [] },
-    ]);
+    let assistantIdx = -1;
+    setMessages((prev) => {
+      assistantIdx = prev.length + 1;
+      return [
+        ...prev,
+        { role: "user", content: question },
+        { role: "assistant", content: "", sources: [] },
+      ];
+    });
 
     abortRef.current = new AbortController();
 
@@ -68,11 +74,9 @@ export default function ChatInterface() {
           sentinelIdx >= 0 ? buffer.slice(0, sentinelIdx) : buffer;
 
         setMessages((prev) => {
+          if (assistantIdx < 0 || assistantIdx >= prev.length) return prev;
           const updated = [...prev];
-          updated[updated.length - 1] = {
-            ...updated[updated.length - 1],
-            content: displayText,
-          };
+          updated[assistantIdx] = { ...updated[assistantIdx], content: displayText };
           return updated;
         });
       }
@@ -85,11 +89,9 @@ export default function ChatInterface() {
             buffer.slice(sentinelIdx + SOURCES_SENTINEL.length)
           );
           setMessages((prev) => {
+            if (assistantIdx < 0 || assistantIdx >= prev.length) return prev;
             const updated = [...prev];
-            updated[updated.length - 1] = {
-              ...updated[updated.length - 1],
-              sources,
-            };
+            updated[assistantIdx] = { ...updated[assistantIdx], sources };
             return updated;
           });
         } catch {
@@ -108,6 +110,7 @@ export default function ChatInterface() {
         return updated;
       });
     } finally {
+      inFlightRef.current = false;
       setIsStreaming(false);
       textareaRef.current?.focus();
     }
