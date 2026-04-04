@@ -264,7 +264,9 @@ app.post("/ingest/quick", authMiddleware, zValidator("json", quickIngestSchema),
       source_type,
       source_url: url,
       tags: mergedTags,
-      text_preview: chunk.slice(0, 200),
+      // Full chunk text so the query route can return the exact relevant passage
+      // without falling back to a blunt slice of the full entry
+      chunk_text: chunk,
     },
   }));
 

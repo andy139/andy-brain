@@ -85,7 +85,7 @@ async function reembedEntry(entry: KnowledgeEntry, index: ReturnType<typeof getP
       source_type: "tiktok",
       source_url: entry.source_url ?? "",
       tags: entry.tags ?? [],
-      text_preview: chunk.slice(0, 200),
+      chunk_text: chunk,
     },
   })));
   console.log(`  Re-embedded ${chunks.length} chunks.`);
@@ -115,12 +115,12 @@ async function backfill() {
       try {
         const fetched = await index.fetch([`${entry.id}-0`]);
         const vec = fetched.records?.[`${entry.id}-0`];
-        if (vec?.metadata?.["source_url"]) {
+        if (vec?.metadata?.["source_url"] && vec?.metadata?.["chunk_text"]) {
           console.log(`[${entry.id}] SKIP (fully migrated)`);
           continue;
         }
-        // Supabase done, Pinecone stale — just re-embed the existing content
-        console.log(`[${entry.id}] Re-embedding only (Pinecone stale)...`);
+        // Supabase done, Pinecone stale or missing chunk_text — re-embed
+        console.log(`[${entry.id}] Re-embedding only (Pinecone stale or no chunk_text)...`);
         await reembedEntry(entry, index);
       } catch (err) {
         console.error(`[${entry.id}] FAILED: ${err instanceof Error ? err.message : err}`);
@@ -208,7 +208,7 @@ async function processEntry(entry: KnowledgeEntry, index: ReturnType<typeof getP
         source_type: "tiktok",
         source_url: entry.source_url ?? "",
         tags: mergedTags,
-        text_preview: chunk.slice(0, 200),
+        chunk_text: chunk,
       },
     }));
 
