@@ -25,7 +25,20 @@ jobs:
       - name: Typecheck API
         run: npm run build:api
 
+      - name: Lint Web
+        run: npm run lint --workspace=packages/web --if-present
+
+      - name: Build Web
+        run: npm run build:web
+
       - name: Test API
         run: npm test --workspace=packages/api
         env:
           AUTH_TOKEN: test-token
+
+      - name: Notify Discord on failure
+        if: failure()
+        run: |
+          curl -s -H "Content-Type: application/json" \
+            -d '{"embeds":[{"title":"CI Failed: andy-brain","description":"Branch: ${{ github.ref_name }} by ${{ github.actor }}","color":15158332,"url":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}' \
+            "${{ secrets.DISCORD_WEBHOOK_URL }}"
