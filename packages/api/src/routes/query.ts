@@ -14,7 +14,7 @@ const app = new Hono();
 
 const querySchema = z.object({
   question: z.string().min(1, "question is required"),
-  top_k: z.number().int().min(1).max(20).optional().default(5),
+  top_k: z.number().int().min(1).max(20).optional().default(8),
   filter: z
     .object({
       source_type: z.enum(["tiktok", "x", "article", "note", "other"]).optional(),
