@@ -74,16 +74,24 @@ app.post("/query", zValidator("json", querySchema), async (c) => {
 
   const entriesMap = new Map((entries ?? []).map((e) => [e.id, e]));
 
-  // 5. Build context array for the prompt
-  const context: ContextItem[] = matches.map((match) => {
-    const entry = entriesMap.get(match.metadata?.entry_id as string);
-    return {
-      text: (match.metadata?.text_preview as string) ?? "",
-      source_type: (match.metadata?.source_type as string) ?? "other",
-      source_url: entry?.source_url ?? null,
-      tags: (match.metadata?.tags as string[]) ?? [],
+  // 5. Build context array for the prompt.
+  //    Use full Supabase entry content (capped at 3000 chars per match) rather
+  //    than the 200-char text_preview stored in Pinecone metadata, so Claude
+  //    has enough context to give a substantive answer.
+  const seen = new Set<string>();
+  const context: ContextItem[] = matches.flatMap((match) => {
+    const entryId = match.metadata?.entry_id as string;
+    const entry = entriesMap.get(entryId);
+    // Deduplicate: multiple chunks from the same entry collapse to one context item
+    if (!entry || seen.has(entryId)) return [];
+    seen.add(entryId);
+    return [{
+      text: (entry.content as string).slice(0, 3000),
+      source_type: (match.metadata?.source_type as string) ?? entry.source_type ?? "other",
+      source_url: entry.source_url ?? null,
+      tags: entry.tags ?? [],
       score: match.score ?? 0,
-    };
+    }];
   });
 
   const prompt = buildRagPrompt(question, context);
