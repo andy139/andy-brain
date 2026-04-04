@@ -4,16 +4,8 @@ const OVERLAP = 200;    // ~50 tokens overlap carried into the next chunk
 const SEPARATORS = ["\n\n", "\n", ". "] as const;
 
 /**
- * Splits text into overlapping chunks of ~500 tokens using a recursive
- * last-separator approach — no external dependencies.
- *
- * Strategy:
- *  1. If the input fits in one chunk, return it.
- *  2. Find the last occurrence of a paragraph/line/sentence separator
- *     within CHUNK_SIZE characters and split there.
- *  3. The next call receives the tail of the previous chunk (OVERLAP chars)
- *     prepended to the remainder, preserving context across chunk boundaries.
- *  4. If no separator is found, hard-split at CHUNK_SIZE.
+ * Splits text into overlapping chunks of ~500 tokens.
+ * Iterative implementation — guaranteed forward progress, no stack overflow risk.
  */
 export function chunkText(text: string): string[] {
   const normalized = text.replace(/\r\n/g, "\n").trim();
@@ -21,30 +13,37 @@ export function chunkText(text: string): string[] {
   if (normalized.length <= CHUNK_SIZE) return [normalized];
 
   const chunks: string[] = [];
+  let pos = 0;
 
-  function doChunk(input: string): void {
-    if (input.length <= CHUNK_SIZE) {
-      chunks.push(input);
-      return;
+  while (pos < normalized.length) {
+    const remaining = normalized.length - pos;
+    if (remaining <= CHUNK_SIZE) {
+      chunks.push(normalized.slice(pos));
+      break;
     }
 
+    const window = normalized.slice(pos, pos + CHUNK_SIZE);
+
+    // Find the last separator within the window
+    let splitAt = -1;
     for (const sep of SEPARATORS) {
-      const idx = input.lastIndexOf(sep, CHUNK_SIZE);
+      const idx = window.lastIndexOf(sep);
       if (idx > 0) {
-        const chunk = input.slice(0, idx + sep.length).trim();
-        if (chunk.length > 0) chunks.push(chunk);
-        // Carry OVERLAP chars into the next call so context bleeds across chunks
-        const nextStart = Math.max(0, idx + sep.length - OVERLAP);
-        doChunk(input.slice(nextStart));
-        return;
+        splitAt = idx + sep.length;
+        break;
       }
     }
 
-    // No separator found within CHUNK_SIZE — hard split
-    chunks.push(input.slice(0, CHUNK_SIZE));
-    doChunk(input.slice(CHUNK_SIZE - OVERLAP));
+    if (splitAt > 0) {
+      chunks.push(window.slice(0, splitAt).trim());
+      // Advance by splitAt, then back up by OVERLAP — but never go backward
+      pos += Math.max(1, splitAt - OVERLAP);
+    } else {
+      // No separator found — hard split
+      chunks.push(window.trim());
+      pos += CHUNK_SIZE - OVERLAP;
+    }
   }
 
-  doChunk(normalized);
   return chunks.filter((c) => c.trim().length > 0);
 }
