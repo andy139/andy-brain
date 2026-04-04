@@ -27,8 +27,8 @@ export default function ChatInterface() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = async () => {
-    const question = input.trim();
+  const sendMessage = async (override?: string) => {
+    const question = override ?? input.trim();
     if (!question || inFlightRef.current) return;
     inFlightRef.current = true;
 
@@ -128,7 +128,7 @@ export default function ChatInterface() {
       {/* Message list */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 scrollbar-thin">
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center gap-3 text-gray-600">
+          <div className="flex flex-col items-center justify-center h-full text-center gap-4 px-4">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="40"
@@ -139,10 +139,30 @@ export default function ChatInterface() {
               strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
+              className="text-gray-600"
             >
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
-            <p className="text-sm">Ask anything from your knowledge base</p>
+            <p className="text-sm text-gray-600">Ask anything from your knowledge base</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 max-w-xl w-full">
+              {[
+                "What did I save recently? Give me a quick recap",
+                "Summarize the coding techniques from my TikToks",
+                "What Claude Code tips have I saved?",
+                "Any productivity or automation tricks in my brain?",
+                "What's something useful I saved that I should revisit?",
+                "Give me a weekly scan of what I've been learning",
+              ].map((q) => (
+                <button
+                  key={q}
+                  onClick={() => sendMessage(q)}
+                  className="text-left text-sm px-4 py-3 rounded-xl border border-gray-800 bg-gray-900/50 text-gray-400 hover:text-gray-200 hover:border-indigo-600/50 hover:bg-gray-900 transition-all duration-150"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
