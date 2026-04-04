@@ -8,6 +8,7 @@ import { promisify } from "util";
 import { readFile, unlink, mkdtemp } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
+import Anthropic from "@anthropic-ai/sdk";
 import { authMiddleware } from "../middleware/auth.js";
 import { generateEmbeddings } from "../lib/embeddings.js";
 import { chunkText } from "../lib/chunker.js";
@@ -15,6 +16,7 @@ import { supabase } from "../lib/supabase.js";
 import { getPineconeIndex } from "../lib/pinecone.js";
 
 const execFileAsync = promisify(execFile);
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const app = new Hono();
 
@@ -44,7 +46,6 @@ async function fetchTikTokContent(url: string): Promise<string> {
 
   const caption = tikwmData.data?.title ?? "";
   const author = tikwmData.data?.author?.nickname ?? "";
-  const videoUrl = tikwmData.data?.play;
 
   // Step 2: use yt-dlp to download audio, then transcribe with Groq Whisper
   let transcript = "";
@@ -121,6 +122,53 @@ async function fetchTikTokContent(url: string): Promise<string> {
   return parts.join("\n");
 }
 
+/**
+ * Uses Claude Haiku to read the TikTok transcript/caption and return
+ * a concise summary of what the video is about, plus relevant topic tags.
+ */
+async function analyzeTikTokContent(
+  rawContent: string
+): Promise<{ summary: string; autoTags: string[] }> {
+  try {
+    const message = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 300,
+      messages: [
+        {
+          role: "user",
+          content: `You are analyzing a TikTok video for a personal knowledge base. Read the content below and respond with ONLY valid JSON — no markdown, no explanation.
+
+Return this exact shape:
+{
+  "summary": "2-3 sentence description of what this video is about and its key takeaway",
+  "tags": ["tag1", "tag2", "tag3"]
+}
+
+Rules for tags:
+- 3-6 lowercase tags
+- Use broad topic categories (e.g. "finance", "cooking", "productivity", "fitness", "tech", "politics", "comedy", "travel")
+- Add specific subtopics if clearly relevant (e.g. "investing", "weight-loss", "ai")
+- No hashtags, no spaces in tags
+
+TikTok content:
+${rawContent}`,
+        },
+      ],
+    });
+
+    const raw = message.content[0].type === "text" ? message.content[0].text.trim() : "";
+    const parsed = JSON.parse(raw) as { summary?: string; tags?: string[] };
+
+    return {
+      summary: parsed.summary ?? "",
+      autoTags: Array.isArray(parsed.tags) ? parsed.tags.map((t) => t.toLowerCase()) : [],
+    };
+  } catch (err) {
+    console.warn("TikTok analysis failed, proceeding without summary:", err);
+    return { summary: "", autoTags: [] };
+  }
+}
+
 app.post("/ingest/quick", authMiddleware, zValidator("json", quickIngestSchema), async (c) => {
   const { url, tags, notes } = c.req.valid("json");
 
@@ -158,8 +206,23 @@ app.post("/ingest/quick", authMiddleware, zValidator("json", quickIngestSchema),
     return c.json({ error: "Could not extract content from URL" }, 422);
   }
 
+  // For TikToks: analyze transcript with Claude to get a summary + auto-tags
+  let summary = "";
+  let autoTags: string[] = [];
+  if (source_type === "tiktok") {
+    ({ summary, autoTags } = await analyzeTikTokContent(content));
+  }
+
+  // Merge user-provided tags with auto-generated ones (deduplicated)
+  const mergedTags = [...new Set([...autoTags, ...(tags ?? [])])];
+
+  // Build stored content: always lead with source URL, then summary if available
+  const headerParts: string[] = [`Source: ${url}`];
+  if (summary) headerParts.push(`Summary: ${summary}`);
+  const enrichedContent = `${headerParts.join("\n")}\n\n${content}`;
+
   // Include notes in the embedded content so they're searchable
-  const fullContent = notes ? `${content}\n\nMy notes: ${notes}` : content;
+  const fullContent = notes ? `${enrichedContent}\n\nMy notes: ${notes}` : enrichedContent;
 
   const { data: entry, error: insertError } = await supabase
     .from("knowledge_entries")
@@ -167,7 +230,7 @@ app.post("/ingest/quick", authMiddleware, zValidator("json", quickIngestSchema),
       content: fullContent,
       source_url: url,
       source_type,
-      tags: tags ?? [],
+      tags: mergedTags,
       notes: notes ?? null,
     })
     .select()
@@ -199,7 +262,8 @@ app.post("/ingest/quick", authMiddleware, zValidator("json", quickIngestSchema),
       entry_id: entry.id,
       chunk_index: i,
       source_type,
-      tags: tags ?? [],
+      source_url: url,
+      tags: mergedTags,
       text_preview: chunk.slice(0, 200),
     },
   }));
@@ -211,7 +275,11 @@ app.post("/ingest/quick", authMiddleware, zValidator("json", quickIngestSchema),
     return c.json({ error: "Failed to store embeddings" }, 500);
   }
 
-  return c.json({ entry_id: entry.id, chunks_created: chunks.length }, 201);
+  return c.json({
+    entry_id: entry.id,
+    chunks_created: chunks.length,
+    ...(source_type === "tiktok" && { summary, auto_tags: autoTags }),
+  }, 201);
 });
 
 export default app;
