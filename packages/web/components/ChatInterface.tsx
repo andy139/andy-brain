@@ -13,14 +13,29 @@ type Message = {
 const SOURCES_SENTINEL = "__SOURCES__";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
+const FALLBACK_SUGGESTIONS = [
+  "What did I save recently?",
+  "Summarize my TikTok saves",
+  "Any coding tips in my brain?",
+];
+
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const inFlightRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Fetch dynamic suggestions from the API on mount
+  useEffect(() => {
+    fetch(`${API_URL}/api/suggestions`)
+      .then((r) => r.json())
+      .then((d) => setSuggestions(d.suggestions ?? FALLBACK_SUGGESTIONS))
+      .catch(() => setSuggestions(FALLBACK_SUGGESTIONS));
+  }, []);
 
   // Auto-scroll on new content
   useEffect(() => {
@@ -146,14 +161,7 @@ export default function ChatInterface() {
             <p className="text-sm text-gray-600">Ask anything from your knowledge base</p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 max-w-xl w-full">
-              {[
-                "What did I save recently? Give me a quick recap",
-                "Summarize the coding techniques from my TikToks",
-                "What Claude Code tips have I saved?",
-                "Any productivity or automation tricks in my brain?",
-                "What's something useful I saved that I should revisit?",
-                "Give me a weekly scan of what I've been learning",
-              ].map((q) => (
+              {suggestions.map((q) => (
                 <button
                   key={q}
                   onClick={() => sendMessage(q)}
