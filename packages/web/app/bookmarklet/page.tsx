@@ -135,20 +135,24 @@ export default function BookmarkletPage() {
         <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-5">
           <h2 className="text-sm font-semibold text-white mb-1">iOS Shortcut</h2>
           <p className="text-xs text-gray-500 mb-4">
-            Save from Safari or the <span className="text-gray-300">TikTok app</span> via the Share Sheet. Optionally jot a quick note about what you learned.
+            Save from Safari or the <span className="text-gray-300">TikTok app</span> via the Share Sheet. All 3 actions go inside <span className="text-gray-300">one single shortcut</span> — do not create them separately.
           </p>
 
-          <ol className="space-y-2 text-xs text-gray-400 mb-4">
-            <li><span className="text-gray-600 mr-1.5">1.</span>Open the <span className="text-gray-200">Shortcuts</span> app → tap <span className="text-gray-200">+</span> → New Shortcut</li>
-            <li><span className="text-gray-600 mr-1.5">2.</span>Add action: <span className="text-gray-200">Ask for Input</span>
+          <ol className="space-y-3 text-xs text-gray-400 mb-4">
+            <li>
+              <span className="text-gray-600 mr-1.5">1.</span>
+              Open <span className="text-gray-200">Shortcuts</span> → tap <span className="text-gray-200">+</span> → tap <span className="text-gray-200">Add Action</span>
+            </li>
+            <li>
+              <span className="text-gray-600 mr-1.5">2.</span>
+              Search <span className="text-gray-200">Ask for Input</span> → add it → tap on it and set:
               <span className="ml-3 block mt-1 font-mono text-gray-500 bg-gray-950 rounded px-2 py-1.5 leading-relaxed">
-                Prompt: &quot;Quick note? (optional)&quot;<br />
-                Allow Multiple Lines: on
+                Prompt: &quot;Quick note? (optional)&quot;
               </span>
             </li>
-            <li><span className="text-gray-600 mr-1.5">3.</span>Add action: <span className="text-gray-200">Get Contents of URL</span></li>
             <li>
-              <span className="text-gray-600 mr-1.5"> </span>
+              <span className="text-gray-600 mr-1.5">3.</span>
+              Tap <span className="text-gray-200">+</span> <span className="text-gray-600">inside the same shortcut</span> → search <span className="text-gray-200">Get Contents of URL</span> → add it → tap to expand and fill in:
               <span className="ml-3 block mt-1 font-mono text-gray-500 bg-gray-950 rounded px-2 py-1.5 leading-relaxed">
                 URL: {API_URL}/api/ingest/quick<br />
                 Method: POST<br />
@@ -156,12 +160,22 @@ export default function BookmarkletPage() {
                 {"  "}Content-Type: application/json<br />
                 {"  "}x-api-key: {apiKey || "YOUR_KEY"}<br />
                 Body: JSON<br />
-                {"  "}url: Shortcut Input<br />
-                {"  "}notes: Provided Input
+                {"  "}url → tap field → pick <span className="text-gray-300">Shortcut Input</span><br />
+                {"  "}notes → tap field → pick <span className="text-gray-300">Provided Input</span>
               </span>
             </li>
-            <li><span className="text-gray-600 mr-1.5">4.</span>Add action: <span className="text-gray-200">Show Notification</span> with the output</li>
-            <li><span className="text-gray-600 mr-1.5">5.</span>Tap the shortcut name → <span className="text-gray-200">Share Sheet</span> → enable <span className="text-gray-200">URLs</span> <span className="text-gray-600">(works with Safari + TikTok app)</span></li>
+            <li>
+              <span className="text-gray-600 mr-1.5">4.</span>
+              Tap <span className="text-gray-200">+</span> inside the same shortcut → search <span className="text-gray-200">Show Notification</span> → add it
+            </li>
+            <li>
+              <span className="text-gray-600 mr-1.5">5.</span>
+              Tap the shortcut <span className="text-gray-200">name at the top</span> → rename it <span className="text-gray-200">Save to Brain</span>
+            </li>
+            <li>
+              <span className="text-gray-600 mr-1.5">6.</span>
+              Tap the <span className="text-gray-200">ⓘ button</span> at the bottom → turn on <span className="text-gray-200">Show in Share Sheet</span> → tap <span className="text-gray-200">Done</span>
+            </li>
           </ol>
 
           <button
