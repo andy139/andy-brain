@@ -39,6 +39,7 @@ export default function EntriesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [keySet, setKeySet] = useState(false);
@@ -167,48 +168,68 @@ export default function EntriesPage() {
             {entries.map((entry) => {
               const icon = TYPE_LABEL[entry.source_type] ?? "?";
               const color = TYPE_COLOR[entry.source_type] ?? TYPE_COLOR.other;
-              const preview = entry.content.slice(0, 220).trim();
+              const isExpanded = expandedId === entry.id;
+              const isLong = entry.content.length > 220;
               const date = new Date(entry.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
               return (
-                <div key={entry.id} className="flex items-start gap-3 rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-                  <span className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-md border text-xs font-bold ${color}`}>
-                    {icon}
-                  </span>
+                <div key={entry.id} className="rounded-lg border border-gray-800 bg-gray-900/50 p-4">
+                  <div className="flex items-start gap-3">
+                    <span className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-md border text-xs font-bold ${color}`}>
+                      {icon}
+                    </span>
 
-                  <div className="min-w-0 flex-1">
-                    {entry.source_url ? (
-                      <a href={entry.source_url} target="_blank" rel="noopener noreferrer" className="block truncate text-xs text-gray-400 hover:text-gray-200 transition-colors mb-1">
-                        {entry.source_url}
-                      </a>
-                    ) : (
-                      <span className="block text-xs text-gray-500 mb-1 capitalize">{entry.source_type}</span>
-                    )}
+                    <div className="min-w-0 flex-1">
+                      {entry.source_url ? (
+                        <a href={entry.source_url} target="_blank" rel="noopener noreferrer" className="block truncate text-xs text-gray-400 hover:text-gray-200 transition-colors mb-1">
+                          {entry.source_url}
+                        </a>
+                      ) : (
+                        <span className="block text-xs text-gray-500 mb-1 capitalize">{entry.source_type}</span>
+                      )}
 
-                    <p className="text-sm text-gray-300 line-clamp-3 leading-relaxed">{preview}{entry.content.length > 220 ? "…" : ""}</p>
+                      <p className={`text-sm text-gray-300 leading-relaxed whitespace-pre-wrap ${isExpanded ? "" : "line-clamp-3"}`}>
+                        {isExpanded ? entry.content : entry.content.slice(0, 220).trim()}{!isExpanded && isLong ? "…" : ""}
+                      </p>
 
-                    <div className="flex items-center gap-3 mt-2 flex-wrap">
-                      {entry.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {entry.tags.map((tag) => (
-                            <span key={tag} className="px-1.5 py-0.5 rounded text-xs bg-gray-800 text-gray-400">{tag}</span>
-                          ))}
+                      <div className="flex items-center gap-3 mt-2 flex-wrap">
+                        {isLong && (
+                          <button
+                            onClick={() => setExpandedId(isExpanded ? null : entry.id)}
+                            className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                          >
+                            {isExpanded ? "Show less" : "Read full entry"}
+                          </button>
+                        )}
+                        {entry.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {entry.tags.map((tag) => (
+                              <span key={tag} className="px-1.5 py-0.5 rounded text-xs bg-gray-800 text-gray-400">{tag}</span>
+                            ))}
+                          </div>
+                        )}
+                        <span className="text-xs text-gray-600 ml-auto">{date}</span>
+                      </div>
+
+                      {isExpanded && entry.notes && (
+                        <div className="mt-3 pt-3 border-t border-gray-800">
+                          <p className="text-xs text-gray-500 mb-1">Notes</p>
+                          <p className="text-sm text-gray-400 whitespace-pre-wrap">{entry.notes}</p>
                         </div>
                       )}
-                      <span className="text-xs text-gray-600 ml-auto">{date}</span>
                     </div>
-                  </div>
 
-                  {keySet && (
-                    <button
-                      onClick={() => handleDelete(entry.id)}
-                      disabled={deletingId === entry.id}
-                      className="shrink-0 text-xs text-gray-600 hover:text-red-400 disabled:opacity-40 transition-colors px-1"
-                      title="Delete"
-                    >
-                      {deletingId === entry.id ? "…" : "✕"}
-                    </button>
-                  )}
+                    {keySet && (
+                      <button
+                        onClick={() => handleDelete(entry.id)}
+                        disabled={deletingId === entry.id}
+                        className="shrink-0 text-xs text-gray-600 hover:text-red-400 disabled:opacity-40 transition-colors px-1"
+                        title="Delete"
+                      >
+                        {deletingId === entry.id ? "…" : "✕"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
