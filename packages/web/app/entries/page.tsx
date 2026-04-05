@@ -89,7 +89,7 @@ export default function EntriesPage() {
 
   return (
     <div className="min-h-full bg-gray-950">
-      <div className="max-w-3xl mx-auto px-4 py-10">
+      <div className="max-w-3xl mx-auto px-3 sm:px-4 py-6 sm:py-10">
         {/* Back link */}
         <Link
           href="/"
@@ -101,9 +101,9 @@ export default function EntriesPage() {
           Back to chat
         </Link>
 
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-semibold text-white">Knowledge base</h1>
+        <div className="flex items-center justify-between mb-6 gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-semibold text-white">Knowledge base</h1>
             {!loading && <p className="text-sm text-gray-500 mt-1">{total} entries</p>}
           </div>
           <Link
@@ -173,8 +173,8 @@ export default function EntriesPage() {
               const date = new Date(entry.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
               return (
-                <div key={entry.id} className="rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-                  <div className="flex items-start gap-3">
+                <div key={entry.id} className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 sm:p-4 overflow-hidden">
+                  <div className="flex items-start gap-2 sm:gap-3">
                     <span className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-md border text-xs font-bold ${color}`}>
                       {icon}
                     </span>

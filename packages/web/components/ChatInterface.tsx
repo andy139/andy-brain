@@ -10,6 +10,90 @@ type Message = {
   error?: boolean;
 };
 
+/**
+ * Lightweight markdown-to-HTML renderer for assistant messages.
+ * Handles: ## headers, **bold**, `inline code`, ```code blocks```, and - lists.
+ * No external dependencies.
+ */
+function renderMarkdown(text: string): string {
+  // Escape HTML entities first
+  let html = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  // Fenced code blocks: ```...```
+  html = html.replace(
+    /```(?:\w*)\n([\s\S]*?)```/g,
+    '<pre class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 my-2 overflow-x-auto text-xs leading-relaxed font-mono"><code>$1</code></pre>'
+  );
+
+  // Inline code: `...`
+  html = html.replace(
+    /`([^`\n]+)`/g,
+    '<code class="bg-gray-800 text-indigo-300 px-1.5 py-0.5 rounded text-xs font-mono">$1</code>'
+  );
+
+  // Headers: ## or ### at start of line
+  html = html.replace(
+    /^### (.+)$/gm,
+    '<h3 class="text-sm font-semibold text-gray-100 mt-3 mb-1">$1</h3>'
+  );
+  html = html.replace(
+    /^## (.+)$/gm,
+    '<h2 class="text-base font-semibold text-white mt-4 mb-1">$1</h2>'
+  );
+  html = html.replace(
+    /^# (.+)$/gm,
+    '<h1 class="text-lg font-bold text-white mt-4 mb-1">$1</h1>'
+  );
+
+  // Bold: **text**
+  html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
+  // Italic: *text* (but not inside **)
+  html = html.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "<em>$1</em>");
+
+  // Unordered list items: lines starting with - or *
+  // Group consecutive list items into a <ul>
+  html = html.replace(
+    /((?:^[ \t]*[-*] .+\n?)+)/gm,
+    (block) => {
+      const items = block
+        .trim()
+        .split("\n")
+        .map((line) =>
+          `<li class="ml-4 list-disc text-gray-300">${line.replace(/^[ \t]*[-*] /, "")}</li>`
+        )
+        .join("");
+      return `<ul class="my-1 space-y-0.5">${items}</ul>`;
+    }
+  );
+
+  // Ordered list items: lines starting with 1. 2. etc.
+  html = html.replace(
+    /((?:^[ \t]*\d+\. .+\n?)+)/gm,
+    (block) => {
+      const items = block
+        .trim()
+        .split("\n")
+        .map((line) =>
+          `<li class="ml-4 list-decimal text-gray-300">${line.replace(/^[ \t]*\d+\. /, "")}</li>`
+        )
+        .join("");
+      return `<ol class="my-1 space-y-0.5">${items}</ol>`;
+    }
+  );
+
+  // Convert remaining double newlines into paragraph breaks
+  html = html.replace(/\n{2,}/g, '<div class="h-3"></div>');
+
+  // Single newlines become <br>
+  html = html.replace(/\n/g, "<br>");
+
+  return html;
+}
+
 const SOURCES_SENTINEL = "__SOURCES__";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -180,23 +264,32 @@ export default function ChatInterface() {
             className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[85%] ${msg.role === "user" ? "max-w-[70%]" : "w-full max-w-3xl"}`}
+              className={`${msg.role === "user" ? "max-w-[85%] sm:max-w-[70%]" : "w-full max-w-3xl"}`}
             >
               {/* Bubble */}
-              <div
-                className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                  msg.role === "user"
-                    ? "bg-indigo-600 text-white rounded-br-sm"
-                    : msg.error
-                    ? "bg-red-950 border border-red-800 text-red-300 rounded-bl-sm"
-                    : "bg-gray-900 border border-gray-800 text-gray-100 rounded-bl-sm"
-                }`}
-              >
-                {msg.content}
-                {msg.role === "assistant" && isStreaming && i === messages.length - 1 && (
-                  <span className="inline-block w-1.5 h-4 bg-gray-400 animate-pulse ml-0.5 rounded-sm align-middle" />
-                )}
-              </div>
+              {msg.role === "user" ? (
+                <div className="rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap bg-indigo-600 text-white rounded-br-sm">
+                  {msg.content}
+                </div>
+              ) : (
+                <div
+                  className={`rounded-2xl px-4 py-3 text-sm leading-relaxed rounded-bl-sm ${
+                    msg.error
+                      ? "bg-red-950 border border-red-800 text-red-300"
+                      : "bg-gray-900 border border-gray-800 text-gray-100"
+                  }`}
+                >
+                  {msg.content ? (
+                    <div
+                      className="markdown-body"
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                    />
+                  ) : null}
+                  {isStreaming && i === messages.length - 1 && (
+                    <span className="inline-block w-1.5 h-4 bg-gray-400 animate-pulse ml-0.5 rounded-sm align-middle" />
+                  )}
+                </div>
+              )}
 
               {/* Source attribution cards */}
               {msg.role === "assistant" &&
@@ -217,7 +310,7 @@ export default function ChatInterface() {
       </div>
 
       {/* Input bar */}
-      <div className="px-4 pb-4 pt-2 border-t border-gray-800 shrink-0">
+      <div className="px-2 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-gray-800 shrink-0">
         <div className="flex gap-2 items-end max-w-3xl mx-auto">
           <textarea
             ref={textareaRef}
@@ -230,7 +323,7 @@ export default function ChatInterface() {
             style={{ fieldSizing: "content" } as React.CSSProperties}
           />
           <button
-            onClick={sendMessage}
+            onClick={() => sendMessage()}
             disabled={!input.trim() || isStreaming}
             className="shrink-0 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-3 text-sm font-medium text-white transition-colors"
           >
