@@ -14,6 +14,13 @@ const listSchema = z.object({
   tag: z.string().optional(),
 });
 
+const searchSchema = z.object({
+  q: z.string().min(1, "search query is required"),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  source_type: z.enum(["tiktok", "x", "article", "note", "other"]).optional(),
+});
+
 app.get("/entries", zValidator("query", listSchema), async (c) => {
   const { page, limit, source_type, tag } = c.req.valid("query");
   const from = (page - 1) * limit;
@@ -37,6 +44,38 @@ app.get("/entries", zValidator("query", listSchema), async (c) => {
   if (error) {
     console.error("Supabase list error:", error);
     return c.json({ error: "Failed to fetch entries" }, 500);
+  }
+
+  return c.json({
+    entries: data ?? [],
+    total: count ?? 0,
+    page,
+    limit,
+    pages: Math.ceil((count ?? 0) / limit),
+  });
+});
+
+app.get("/entries/search", zValidator("query", searchSchema), async (c) => {
+  const { q, page, limit, source_type } = c.req.valid("query");
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  let query = supabase
+    .from("knowledge_entries")
+    .select("*", { count: "exact" })
+    .ilike("content", `%${q}%`)
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (source_type) {
+    query = query.eq("source_type", source_type);
+  }
+
+  const { data, count, error } = await query;
+
+  if (error) {
+    console.error("Supabase search error:", error);
+    return c.json({ error: "Failed to search entries" }, 500);
   }
 
   return c.json({

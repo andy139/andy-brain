@@ -25,7 +25,7 @@ app.options("/portfolio/chat", (c) => {
   c.header("Access-Control-Allow-Origin", "*");
   c.header("Access-Control-Allow-Methods", "POST, OPTIONS");
   c.header("Access-Control-Allow-Headers", "Content-Type");
-  return c.text("", 204);
+  return c.body(null, 204);
 });
 
 // Public endpoint — no auth required — open CORS since it's intentionally public
