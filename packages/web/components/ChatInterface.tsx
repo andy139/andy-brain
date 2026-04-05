@@ -203,7 +203,7 @@ export default function ChatInterface() {
         const updated = [...prev];
         updated[updated.length - 1] = {
           ...updated[updated.length - 1],
-          content: "Something went wrong. Please try again.",
+          content: "Brain's cooked rn -- probably hit the token limit or the embedding API is napping. Give it a sec and try again.",
           error: true,
         };
         return updated;
