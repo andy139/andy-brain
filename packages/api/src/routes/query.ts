@@ -76,7 +76,7 @@ app.post("/query", zValidator("json", querySchema), async (c) => {
   //    Prefer chunk_text from Pinecone metadata (the exact relevant passage found
   //    by vector search). Fall back to the first 3000 chars of the Supabase entry
   //    for older vectors that predate the chunk_text field.
-  const context: ContextItem[] = matches.map((match) => {
+  const context: ContextItem[] = matches.filter((m) => (m.score ?? 0) >= 0.35).map((match) => {
     const entry = entriesMap.get(match.metadata?.entry_id as string);
     const chunkText = match.metadata?.chunk_text as string | undefined;
     const fallbackText = (entry?.content as string | undefined)?.slice(0, 3000) ?? "";
@@ -106,14 +106,27 @@ app.post("/query", zValidator("json", querySchema), async (c) => {
         if (text) await s.write(text);
       }
 
-      // Append source attributions so the client can render cards
-      const sources = (entries ?? []).map((e) => ({
-        id: e.id,
-        source_type: e.source_type,
-        source_url: e.source_url,
-        preview: (e.content as string).slice(0, 200),
-        tags: e.tags,
-      }));
+      // Append source attributions — only high-relevance matches, deduplicated
+      const MIN_SCORE = 0.35;
+      const seenIds = new Set<string>();
+      const sources = matches
+        .filter((m) => (m.score ?? 0) >= MIN_SCORE)
+        .map((m) => {
+          const entryId = m.metadata?.entry_id as string;
+          if (seenIds.has(entryId)) return null;
+          seenIds.add(entryId);
+          const entry = entriesMap.get(entryId);
+          if (!entry) return null;
+          return {
+            id: entry.id,
+            source_type: entry.source_type,
+            source_url: entry.source_url,
+            preview: (entry.content as string).slice(0, 200),
+            tags: entry.tags,
+            score: m.score,
+          };
+        })
+        .filter(Boolean);
 
       await s.write(`\n\n__SOURCES__${JSON.stringify(sources)}`);
     } catch (err) {
