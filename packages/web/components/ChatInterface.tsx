@@ -117,7 +117,7 @@ export default function ChatInterface() {
   useEffect(() => {
     fetch(`${API_URL}/api/suggestions`)
       .then((r) => r.json())
-      .then((d) => setSuggestions(d.suggestions ?? FALLBACK_SUGGESTIONS))
+      .then((d) => setSuggestions(["What projects has Andy been working on?", ...(d.suggestions ?? FALLBACK_SUGGESTIONS)]))
       .catch(() => setSuggestions(FALLBACK_SUGGESTIONS));
   }, []);
 
