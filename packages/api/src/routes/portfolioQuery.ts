@@ -2,12 +2,10 @@ import { Hono } from "hono";
 import { stream } from "hono/streaming";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import Anthropic from "@anthropic-ai/sdk";
 import { generateEmbedding } from "../lib/embeddings.js";
 import { getPineconeIndex } from "../lib/pinecone.js";
 import { buildPortfolioPrompt, type ContextItem } from "../lib/prompts.js";
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+import { groq, MODEL_LARGE, MODEL_SMALL } from "../lib/groq.js";
 
 // Embedding cache — avoids re-embedding the same question twice
 const embeddingCache = new Map<string, number[]>();
@@ -80,26 +78,25 @@ app.post("/portfolio/chat", zValidator("json", portfolioQuerySchema), async (c) 
 
   return stream(c, async (s) => {
     try {
-      const claudeStream = anthropic.messages.stream({
-        model: "claude-sonnet-4-20250514",
+      const llmStream = await groq.chat.completions.create({
+        model: MODEL_LARGE,
         max_tokens: 1024,
+        stream: true,
         messages: [{ role: "user", content: prompt }],
       });
 
       let fullText = "";
-      for await (const event of claudeStream) {
-        if (
-          event.type === "content_block_delta" &&
-          event.delta.type === "text_delta"
-        ) {
-          fullText += event.delta.text;
-          await s.write(event.delta.text);
+      for await (const chunk of llmStream) {
+        const text = chunk.choices[0]?.delta?.content;
+        if (text) {
+          fullText += text;
+          await s.write(text);
         }
       }
 
-      // Generate 3 contextual follow-up questions based on what was just answered
-      const followupRes = await anthropic.messages.create({
-        model: "claude-haiku-4-5-20251001",
+      // Generate 3 contextual follow-up questions
+      const followupRes = await groq.chat.completions.create({
+        model: MODEL_SMALL,
         max_tokens: 200,
         messages: [{
           role: "user",
@@ -107,7 +104,7 @@ app.post("/portfolio/chat", zValidator("json", portfolioQuerySchema), async (c) 
         }],
       });
 
-      const raw = followupRes.content[0].type === "text" ? followupRes.content[0].text.trim() : "[]";
+      const raw = followupRes.choices[0]?.message?.content?.trim() ?? "[]";
       const followups = JSON.parse(raw.replace(/^```json\n?/, "").replace(/\n?```$/, ""));
       const sentinel = `\n\n__FOLLOWUPS__${JSON.stringify(followups)}`;
       await s.write(sentinel);

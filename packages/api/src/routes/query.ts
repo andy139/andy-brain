@@ -2,13 +2,11 @@ import { Hono } from "hono";
 import { stream } from "hono/streaming";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import Anthropic from "@anthropic-ai/sdk";
 import { generateEmbedding } from "../lib/embeddings.js";
 import { supabase } from "../lib/supabase.js";
 import { getPineconeIndex } from "../lib/pinecone.js";
 import { buildRagPrompt, type ContextItem } from "../lib/prompts.js";
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+import { groq, MODEL_LARGE } from "../lib/groq.js";
 
 const app = new Hono();
 
@@ -93,22 +91,19 @@ app.post("/query", zValidator("json", querySchema), async (c) => {
 
   const prompt = buildRagPrompt(question, context);
 
-  // 6. Stream Claude's response, then append source JSON as a sentinel
+  // 6. Stream LLM response, then append source JSON as a sentinel
   return stream(c, async (s) => {
     try {
-      const claudeStream = anthropic.messages.stream({
-        model: "claude-sonnet-4-20250514",
+      const llmStream = await groq.chat.completions.create({
+        model: MODEL_LARGE,
         max_tokens: 2048,
+        stream: true,
         messages: [{ role: "user", content: prompt }],
       });
 
-      for await (const event of claudeStream) {
-        if (
-          event.type === "content_block_delta" &&
-          event.delta.type === "text_delta"
-        ) {
-          await s.write(event.delta.text);
-        }
+      for await (const chunk of llmStream) {
+        const text = chunk.choices[0]?.delta?.content;
+        if (text) await s.write(text);
       }
 
       // Append source attributions so the client can render cards

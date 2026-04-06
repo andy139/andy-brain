@@ -8,15 +8,14 @@ import { promisify } from "util";
 import { readFile, unlink, mkdtemp } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
-import Anthropic from "@anthropic-ai/sdk";
 import { authMiddleware } from "../middleware/auth.js";
 import { generateEmbeddings } from "../lib/embeddings.js";
 import { chunkText } from "../lib/chunker.js";
 import { supabase } from "../lib/supabase.js";
 import { getPineconeIndex } from "../lib/pinecone.js";
+import { groq, MODEL_SMALL } from "../lib/groq.js";
 
 const execFileAsync = promisify(execFile);
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const app = new Hono();
 
@@ -130,8 +129,8 @@ async function analyzeTikTokContent(
   rawContent: string
 ): Promise<{ summary: string; autoTags: string[] }> {
   try {
-    const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
+    const message = await groq.chat.completions.create({
+      model: MODEL_SMALL,
       max_tokens: 300,
       messages: [
         {
@@ -156,8 +155,8 @@ ${rawContent}`,
       ],
     });
 
-    const raw = message.content[0].type === "text" ? message.content[0].text.trim() : "";
-    const parsed = JSON.parse(raw) as { summary?: string; tags?: string[] };
+    const raw = (message.choices[0]?.message?.content ?? "").trim();
+    const parsed = JSON.parse(raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")) as { summary?: string; tags?: string[] };
 
     return {
       summary: parsed.summary ?? "",
