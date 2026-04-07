@@ -98,16 +98,19 @@ const SOURCES_SENTINEL = "__SOURCES__";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 const FALLBACK_SUGGESTIONS = [
-  "What did I save recently?",
-  "Summarize my TikTok saves",
-  "Any coding tips in my brain?",
+  "What did I learn from my TikToks this week?",
+  "Summarize the coding techniques I saved",
+  "Any Claude Code tips in my brain?",
+  "What automation tricks have I saved?",
+  "Remind me about those testing strategies",
+  "What open source tools did I bookmark?",
 ];
 
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>(FALLBACK_SUGGESTIONS);
   const abortRef = useRef<AbortController | null>(null);
   const inFlightRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
