@@ -8,6 +8,7 @@ import quickIngestRoute from "./routes/quickIngest.js";
 import pdfIngestRoute from "./routes/pdfIngest.js";
 import portfolioQueryRoute from "./routes/portfolioQuery.js";
 import suggestionsRoute from "./routes/suggestions.js";
+import digestRoute from "./routes/digest.js";
 import { supabase } from "./lib/supabase.js";
 import { getPineconeIndex } from "./lib/pinecone.js";
 import { rateLimiter } from "./middleware/rateLimit.js";
@@ -45,6 +46,7 @@ app.route("/api", queryRoute);
 app.route("/api", entriesRoute);
 app.route("/api", portfolioQueryRoute);
 app.route("/api", suggestionsRoute);
+app.route("/api", digestRoute);
 
 app.get("/health", async (c) => {
   const ts = new Date().toISOString();
