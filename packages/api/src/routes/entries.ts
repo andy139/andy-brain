@@ -12,6 +12,8 @@ const listSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   source_type: z.enum(["tiktok", "x", "article", "note", "other"]).optional(),
   tag: z.string().optional(),
+  date_from: z.string().optional(),
+  date_to: z.string().optional(),
 });
 
 const searchSchema = z.object({
@@ -22,7 +24,7 @@ const searchSchema = z.object({
 });
 
 app.get("/entries", zValidator("query", listSchema), async (c) => {
-  const { page, limit, source_type, tag } = c.req.valid("query");
+  const { page, limit, source_type, tag, date_from, date_to } = c.req.valid("query");
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
@@ -37,6 +39,12 @@ app.get("/entries", zValidator("query", listSchema), async (c) => {
   }
   if (tag) {
     query = query.contains("tags", [tag]);
+  }
+  if (date_from) {
+    query = query.gte("created_at", date_from);
+  }
+  if (date_to) {
+    query = query.lt("created_at", date_to);
   }
 
   const { data, count, error } = await query;
