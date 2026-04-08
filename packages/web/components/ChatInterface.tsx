@@ -7,6 +7,7 @@ type Message = {
   role: "user" | "assistant";
   content: string;
   sources?: Source[];
+  followups?: string[];
   error?: boolean;
 };
 
@@ -85,6 +86,12 @@ function renderMarkdown(text: string): string {
     }
   );
 
+  // Hyperlink URLs (but not inside <a> or <code> tags already)
+  html = html.replace(
+    /(?<!["'>])(https?:\/\/[^\s<)"]+)/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition-colors">$1</a>'
+  );
+
   // Convert remaining double newlines into paragraph breaks
   html = html.replace(/\n{2,}/g, '<div class="h-3"></div>');
 
@@ -95,6 +102,7 @@ function renderMarkdown(text: string): string {
 }
 
 const SOURCES_SENTINEL = "__SOURCES__";
+const FOLLOWUPS_SENTINEL = "__FOLLOWUPS__";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 const FALLBACK_SUGGESTIONS = [
@@ -183,21 +191,29 @@ export default function ChatInterface() {
         });
       }
 
-      // Parse source attributions appended after the sentinel
-      const sentinelIdx = buffer.indexOf(SOURCES_SENTINEL);
-      if (sentinelIdx >= 0) {
+      // Parse sources and follow-ups from sentinels
+      const srcIdx = buffer.indexOf(SOURCES_SENTINEL);
+      const fupIdx = buffer.indexOf(FOLLOWUPS_SENTINEL);
+      if (srcIdx >= 0) {
         try {
+          const srcEnd = fupIdx > srcIdx ? fupIdx : buffer.length;
           const sources: Source[] = JSON.parse(
-            buffer.slice(sentinelIdx + SOURCES_SENTINEL.length)
+            buffer.slice(srcIdx + SOURCES_SENTINEL.length, srcEnd).trim()
           );
+          let followups: string[] = [];
+          if (fupIdx >= 0) {
+            try {
+              followups = JSON.parse(buffer.slice(fupIdx + FOLLOWUPS_SENTINEL.length).trim());
+            } catch { /* ignore */ }
+          }
           setMessages((prev) => {
             if (assistantIdx < 0 || assistantIdx >= prev.length) return prev;
             const updated = [...prev];
-            updated[assistantIdx] = { ...updated[assistantIdx], sources };
+            updated[assistantIdx] = { ...updated[assistantIdx], sources, followups };
             return updated;
           });
         } catch {
-          // malformed JSON — ignore, sources stay empty
+          // malformed JSON — ignore
         }
       }
     } catch (err) {
@@ -313,6 +329,24 @@ export default function ChatInterface() {
                     <p className="text-xs text-gray-500 px-1">Sources</p>
                     {msg.sources.map((src) => (
                       <SourceCard key={src.id} source={src} />
+                    ))}
+                  </div>
+                )}
+
+              {/* Follow-up question chips */}
+              {msg.role === "assistant" &&
+                !isStreaming &&
+                msg.followups &&
+                msg.followups.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {msg.followups.map((q) => (
+                      <button
+                        key={q}
+                        onClick={() => sendMessage(q)}
+                        className="text-xs px-3 py-2 rounded-lg border border-indigo-500/20 bg-indigo-500/[0.06] text-indigo-300 hover:bg-indigo-500/[0.12] hover:border-indigo-500/40 hover:text-indigo-200 transition-all duration-150"
+                      >
+                        {q}
+                      </button>
                     ))}
                   </div>
                 )}

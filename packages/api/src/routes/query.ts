@@ -6,7 +6,7 @@ import { generateEmbedding } from "../lib/embeddings.js";
 import { supabase } from "../lib/supabase.js";
 import { getPineconeIndex } from "../lib/pinecone.js";
 import { buildRagPrompt, type ContextItem } from "../lib/prompts.js";
-import { groq, MODEL_LARGE } from "../lib/groq.js";
+import { groq, MODEL_LARGE, MODEL_SMALL } from "../lib/groq.js";
 
 const app = new Hono();
 
@@ -91,9 +91,10 @@ app.post("/query", zValidator("json", querySchema), async (c) => {
 
   const prompt = buildRagPrompt(question, context);
 
-  // 6. Stream LLM response, then append source JSON as a sentinel
+  // 6. Stream LLM response, then append sources + follow-up questions
   return stream(c, async (s) => {
     try {
+      let fullAnswer = "";
       const llmStream = await groq.chat.completions.create({
         model: MODEL_LARGE,
         max_tokens: 2048,
@@ -103,10 +104,13 @@ app.post("/query", zValidator("json", querySchema), async (c) => {
 
       for await (const chunk of llmStream) {
         const text = chunk.choices[0]?.delta?.content;
-        if (text) await s.write(text);
+        if (text) {
+          fullAnswer += text;
+          await s.write(text);
+        }
       }
 
-      // Append source attributions — only high-relevance matches, deduplicated
+      // Build source attributions — deduplicated, with title extracted from content
       const MIN_SCORE = 0.35;
       const seenIds = new Set<string>();
       const sources = matches
@@ -117,18 +121,45 @@ app.post("/query", zValidator("json", querySchema), async (c) => {
           seenIds.add(entryId);
           const entry = entriesMap.get(entryId);
           if (!entry) return null;
+          // Extract a title: use Summary line if present, else first line of content
+          const content = entry.content as string;
+          const summaryMatch = content.match(/^Summary:\s*(.+)$/m);
+          const title = summaryMatch?.[1]?.slice(0, 100)
+            ?? content.replace(/^Source:.*\n?/m, "").trim().split("\n")[0].slice(0, 100);
           return {
             id: entry.id,
             source_type: entry.source_type,
             source_url: entry.source_url,
-            preview: (entry.content as string).slice(0, 200),
+            title,
             tags: entry.tags,
             score: m.score,
           };
         })
         .filter(Boolean);
 
+      // Generate 3 follow-up questions based on the answer
+      let followups: string[] = [];
+      try {
+        const followupRes = await groq.chat.completions.create({
+          model: MODEL_SMALL,
+          max_tokens: 200,
+          messages: [{
+            role: "user",
+            content: `Based on this Q&A from a personal knowledge base, suggest 3 natural follow-up questions the user might ask next. Be specific to the content, not generic. Under 50 chars each. Return ONLY a JSON array of 3 strings.
+
+Question: "${question}"
+Answer summary: "${fullAnswer.slice(0, 400)}"`,
+          }],
+        });
+        const raw = (followupRes.choices[0]?.message?.content ?? "[]")
+          .replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+        followups = JSON.parse(raw);
+      } catch {
+        // Follow-up generation failed — no big deal, skip
+      }
+
       await s.write(`\n\n__SOURCES__${JSON.stringify(sources)}`);
+      await s.write(`\n\n__FOLLOWUPS__${JSON.stringify(followups)}`);
     } catch (err) {
       console.error("Streaming error:", err);
       await s.write("\n\n[Error: failed to generate response]");

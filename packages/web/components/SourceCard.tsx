@@ -6,7 +6,8 @@ export type Source = {
   id: string;
   source_type: string;
   source_url: string | null;
-  preview: string;
+  preview?: string;
+  title?: string;
   tags: string[];
 };
 
@@ -50,10 +51,10 @@ export default function SourceCard({ source }: { source: Source }) {
           {icon}
         </span>
 
-        {/* URL or type label */}
-        <span className="min-w-0 flex-1 truncate text-xs text-gray-400">
-          {displayUrl ?? (
-            <span className="capitalize">{source.source_type}</span>
+        {/* Title or URL */}
+        <span className="min-w-0 flex-1 truncate text-xs text-gray-300">
+          {source.title ?? displayUrl ?? (
+            <span className="capitalize text-gray-400">{source.source_type}</span>
           )}
         </span>
 
