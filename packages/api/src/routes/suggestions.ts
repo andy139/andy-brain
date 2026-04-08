@@ -1,6 +1,8 @@
 import { Hono } from "hono";
+import Anthropic from "@anthropic-ai/sdk";
 import { supabase } from "../lib/supabase.js";
-import { groq, MODEL_SMALL } from "../lib/groq.js";
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const app = new Hono();
 
@@ -26,9 +28,9 @@ app.get("/suggestions", async (c) => {
     .join("\n\n");
 
   try {
-    const msg = await groq.chat.completions.create({
-      model: MODEL_SMALL,
-      max_tokens: 300,
+    const msg = await anthropic.messages.create({
+      model: "claude-opus-4-6",
+      max_tokens: 400,
       messages: [
         {
           role: "user",
@@ -47,7 +49,7 @@ ${digest}`,
       ],
     });
 
-    const raw = (msg.choices[0]?.message?.content ?? "[]")
+    const raw = (msg.content[0].type === "text" ? msg.content[0].text : "[]")
       .replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
     const suggestions = JSON.parse(raw) as string[];
 
