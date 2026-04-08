@@ -145,10 +145,17 @@ app.post("/query", zValidator("json", querySchema), async (c) => {
           max_tokens: 200,
           messages: [{
             role: "user",
-            content: `Based on this Q&A from a personal knowledge base, suggest 3 natural follow-up questions the user might ask next. Be specific to the content, not generic. Under 50 chars each. Return ONLY a JSON array of 3 strings.
+            content: `You're helping someone learn from their saved TikToks, articles, and notes. They just asked a question and got an answer. Now suggest 3 follow-up questions that help them GO DEEPER and actually APPLY what they learned.
+
+Think like a curious learner:
+- 1 question that connects this to something else they might have saved ("how does this relate to X?")
+- 1 question that makes it actionable ("how would I actually implement/use this?")
+- 1 question that challenges or extends the idea ("what's the downside?" or "what's the next level?")
+
+Be specific to the actual content. No generic crap like "tell me more." Under 50 chars each. Return ONLY a JSON array of 3 strings.
 
 Question: "${question}"
-Answer summary: "${fullAnswer.slice(0, 400)}"`,
+Answer: "${fullAnswer.slice(0, 500)}"`,
           }],
         });
         const raw = (followupRes.choices[0]?.message?.content ?? "[]")
