@@ -62,19 +62,19 @@ export default function BookmarkletPage() {
   }
 
   return (
-    <div className="min-h-full bg-gray-950">
+    <div className="min-h-full">
       <div className="max-w-2xl mx-auto px-4 py-10">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-8"
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-200 transition-colors mb-8 group"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-0.5 transition-transform">
             <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
           Back to chat
         </Link>
 
-        <h1 className="text-2xl font-semibold text-white mb-2">One-click capture</h1>
+        <h1 className="text-2xl font-bold text-gradient mb-2">One-click capture</h1>
         <p className="text-sm text-gray-400 mb-8">
           Save any webpage to your brain without opening the app.
         </p>
@@ -87,13 +87,13 @@ export default function BookmarkletPage() {
             placeholder="Paste your AUTH_TOKEN"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none input-glow"
           />
           <p className="mt-1.5 text-xs text-gray-600">Stays in your browser — never sent anywhere except your own API.</p>
         </div>
 
         {/* Bookmarklet */}
-        <div className="mb-8 rounded-lg border border-gray-800 bg-gray-900/50 p-5">
+        <div className="mb-8 rounded-xl border border-white/[0.06] bg-white/[0.03] p-5">
           <h2 className="text-sm font-semibold text-white mb-1">Browser bookmarklet</h2>
           <p className="text-xs text-gray-500 mb-4">
             Drag the button below to your bookmarks bar. Then click it on any page to save it instantly.
@@ -104,7 +104,7 @@ export default function BookmarkletPage() {
               href={bookmarklet!}
               onClick={(e) => e.preventDefault()}
               draggable
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-sm font-medium text-white transition-colors cursor-grab select-none"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-sm font-medium text-white transition-all cursor-grab select-none shadow-lg shadow-indigo-500/20"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
@@ -112,7 +112,7 @@ export default function BookmarkletPage() {
               Save to Brain
             </a>
           ) : (
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gray-800 text-sm text-gray-500 cursor-not-allowed select-none">
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white/[0.06] border border-white/[0.06] text-sm text-gray-500 cursor-not-allowed select-none">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
               </svg>
@@ -132,7 +132,7 @@ export default function BookmarkletPage() {
         </div>
 
         {/* iOS Shortcut */}
-        <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-5">
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-5">
           <h2 className="text-sm font-semibold text-white mb-1">iOS Shortcut</h2>
           <p className="text-xs text-gray-500 mb-4">
             Save from Safari or the <span className="text-gray-300">TikTok app</span> via the Share Sheet. All 3 actions go inside <span className="text-gray-300">one single shortcut</span> — do not create them separately.
@@ -140,20 +140,20 @@ export default function BookmarkletPage() {
 
           <ol className="space-y-3 text-xs text-gray-400 mb-4">
             <li>
-              <span className="text-gray-600 mr-1.5">1.</span>
+              <span className="text-indigo-400/60 mr-1.5 font-medium">1.</span>
               Open <span className="text-gray-200">Shortcuts</span> → tap <span className="text-gray-200">+</span> → tap <span className="text-gray-200">Add Action</span>
             </li>
             <li>
-              <span className="text-gray-600 mr-1.5">2.</span>
+              <span className="text-indigo-400/60 mr-1.5 font-medium">2.</span>
               Search <span className="text-gray-200">Ask for Input</span> → add it → tap on it and set:
-              <span className="ml-3 block mt-1 font-mono text-gray-500 bg-gray-950 rounded px-2 py-1.5 leading-relaxed">
+              <span className="ml-3 block mt-1 font-mono text-gray-500 bg-black/30 border border-white/[0.04] rounded-lg px-2 py-1.5 leading-relaxed">
                 Prompt: &quot;Quick note? (optional)&quot;
               </span>
             </li>
             <li>
-              <span className="text-gray-600 mr-1.5">3.</span>
+              <span className="text-indigo-400/60 mr-1.5 font-medium">3.</span>
               Tap <span className="text-gray-200">+</span> <span className="text-gray-600">inside the same shortcut</span> → search <span className="text-gray-200">Get Contents of URL</span> → add it → tap to expand and fill in:
-              <span className="ml-3 block mt-1 font-mono text-gray-500 bg-gray-950 rounded px-2 py-1.5 leading-relaxed">
+              <span className="ml-3 block mt-1 font-mono text-gray-500 bg-black/30 border border-white/[0.04] rounded-lg px-2 py-1.5 leading-relaxed">
                 URL: {API_URL}/api/ingest/quick<br />
                 Method: POST<br />
                 Headers:<br />
@@ -165,23 +165,23 @@ export default function BookmarkletPage() {
               </span>
             </li>
             <li>
-              <span className="text-gray-600 mr-1.5">4.</span>
+              <span className="text-indigo-400/60 mr-1.5 font-medium">4.</span>
               Tap <span className="text-gray-200">+</span> inside the same shortcut → search <span className="text-gray-200">Show Notification</span> → add it
             </li>
             <li>
-              <span className="text-gray-600 mr-1.5">5.</span>
+              <span className="text-indigo-400/60 mr-1.5 font-medium">5.</span>
               Tap the shortcut <span className="text-gray-200">name at the top</span> → rename it <span className="text-gray-200">Save to Brain</span>
             </li>
             <li>
-              <span className="text-gray-600 mr-1.5">6.</span>
-              Tap the <span className="text-gray-200">ⓘ button</span> at the bottom → turn on <span className="text-gray-200">Show in Share Sheet</span> → tap <span className="text-gray-200">Done</span>
+              <span className="text-indigo-400/60 mr-1.5 font-medium">6.</span>
+              Tap the <span className="text-gray-200">i button</span> at the bottom → turn on <span className="text-gray-200">Show in Share Sheet</span> → tap <span className="text-gray-200">Done</span>
             </li>
           </ol>
 
           <button
             onClick={copyShortcut}
             disabled={!apiKey}
-            className="text-xs px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-gray-300 transition-colors"
+            className="text-xs px-4 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.06] disabled:opacity-30 text-gray-300 transition-all"
           >
             {copied ? "Copied!" : "Copy instructions"}
           </button>

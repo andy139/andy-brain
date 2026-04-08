@@ -14,11 +14,11 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 const TYPE_COLOR: Record<string, string> = {
-  tiktok: "bg-pink-900/50 text-pink-300 border-pink-800",
-  x: "bg-sky-900/50 text-sky-300 border-sky-800",
-  article: "bg-violet-900/50 text-violet-300 border-violet-800",
-  note: "bg-amber-900/50 text-amber-300 border-amber-800",
-  other: "bg-gray-800/50 text-gray-300 border-gray-700",
+  tiktok: "bg-pink-500/10 text-pink-400 border-pink-500/20",
+  x: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+  article: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+  note: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  other: "bg-gray-500/10 text-gray-400 border-gray-500/20",
 };
 
 type Entry = {
@@ -88,14 +88,14 @@ export default function EntriesPage() {
   }
 
   return (
-    <div className="min-h-full bg-gray-950">
+    <div className="min-h-full">
       <div className="max-w-3xl mx-auto px-3 sm:px-4 py-6 sm:py-10">
         {/* Back link */}
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-8"
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-200 transition-colors mb-8 group"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-0.5 transition-transform">
             <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
           Back to chat
@@ -103,12 +103,12 @@ export default function EntriesPage() {
 
         <div className="flex items-center justify-between mb-6 gap-3">
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-semibold text-white">Knowledge base</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gradient">Knowledge base</h1>
             {!loading && <p className="text-sm text-gray-500 mt-1">{total} entries</p>}
           </div>
           <Link
             href="/add"
-            className="text-sm px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-200 transition-colors"
+            className="text-sm px-4 py-2 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/20 text-indigo-300 hover:text-indigo-200 transition-all duration-200"
           >
             + Add
           </Link>
@@ -116,7 +116,7 @@ export default function EntriesPage() {
 
         {/* API key for deletes */}
         {!keySet ? (
-          <div className="mb-6 p-4 rounded-lg border border-gray-800 bg-gray-900/50">
+          <div className="mb-6 p-4 rounded-xl border border-white/[0.06] bg-white/[0.03]">
             <p className="text-sm text-gray-400 mb-3">Enter your API key to enable deletion</p>
             <div className="flex gap-2">
               <input
@@ -130,19 +130,19 @@ export default function EntriesPage() {
                     setKeySet(true);
                   }
                 }}
-                className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none input-glow"
               />
               <button
                 onClick={() => { setApiKey(apiKeyInput); setKeySet(true); }}
                 disabled={!apiKeyInput}
-                className="px-3 py-1.5 text-sm rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white transition-colors"
+                className="px-4 py-2 text-sm rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 disabled:opacity-30 text-white transition-all shadow-lg shadow-indigo-500/10"
               >
                 Set
               </button>
             </div>
           </div>
         ) : (
-          <div className="mb-6 flex items-center justify-between text-sm">
+          <div className="mb-6 flex items-center justify-between text-sm px-1">
             <span className="text-gray-500">API key set — delete enabled</span>
             <button onClick={() => { setApiKey(""); setKeySet(false); setApiKeyInput(""); }} className="text-gray-600 hover:text-gray-400 transition-colors">
               Clear
@@ -152,20 +152,36 @@ export default function EntriesPage() {
 
         {/* Content */}
         {loading && (
-          <div className="flex justify-center py-16 text-gray-600 text-sm">Loading…</div>
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <div className="flex gap-1.5">
+              <span className="w-2 h-2 bg-indigo-500/50 rounded-full animate-bounce [animation-delay:0ms]" />
+              <span className="w-2 h-2 bg-indigo-500/50 rounded-full animate-bounce [animation-delay:150ms]" />
+              <span className="w-2 h-2 bg-indigo-500/50 rounded-full animate-bounce [animation-delay:300ms]" />
+            </div>
+            <p className="text-sm text-gray-600">Loading entries...</p>
+          </div>
         )}
 
         {error && (
-          <div className="p-4 rounded-lg border border-red-900 bg-red-950/30 text-red-400 text-sm">{error}</div>
+          <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-400 text-sm">{error}</div>
         )}
 
         {!loading && !error && entries.length === 0 && (
-          <div className="text-center py-16 text-gray-600 text-sm">No entries yet.</div>
+          <div className="text-center py-20">
+            <div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mx-auto mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+            </div>
+            <p className="text-sm text-gray-500">No entries yet</p>
+            <p className="text-xs text-gray-600 mt-1">Add your first piece of knowledge to get started</p>
+          </div>
         )}
 
         {!loading && !error && entries.length > 0 && (
           <div className="space-y-3">
-            {entries.map((entry) => {
+            {entries.map((entry, idx) => {
               const icon = TYPE_LABEL[entry.source_type] ?? "?";
               const color = TYPE_COLOR[entry.source_type] ?? TYPE_COLOR.other;
               const isExpanded = expandedId === entry.id;
@@ -173,15 +189,19 @@ export default function EntriesPage() {
               const date = new Date(entry.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
               return (
-                <div key={entry.id} className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 sm:p-4 overflow-hidden">
-                  <div className="flex items-start gap-2 sm:gap-3">
-                    <span className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-md border text-xs font-bold ${color}`}>
+                <div
+                  key={entry.id}
+                  className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3.5 sm:p-4 overflow-hidden card-glow animate-fade-in-up"
+                  style={{ animationDelay: `${idx * 30}ms`, animationFillMode: "both" }}
+                >
+                  <div className="flex items-start gap-2.5 sm:gap-3">
+                    <span className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-lg border text-xs font-bold ${color}`}>
                       {icon}
                     </span>
 
                     <div className="min-w-0 flex-1">
                       {entry.source_url ? (
-                        <a href={entry.source_url} target="_blank" rel="noopener noreferrer" className="block truncate text-xs text-gray-400 hover:text-gray-200 transition-colors mb-1">
+                        <a href={entry.source_url} target="_blank" rel="noopener noreferrer" className="block truncate text-xs text-gray-400 hover:text-indigo-400 transition-colors mb-1">
                           {entry.source_url}
                         </a>
                       ) : (
@@ -189,10 +209,10 @@ export default function EntriesPage() {
                       )}
 
                       <p className={`text-sm text-gray-300 leading-relaxed whitespace-pre-wrap ${isExpanded ? "" : "line-clamp-3"}`}>
-                        {isExpanded ? entry.content : entry.content.slice(0, 220).trim()}{!isExpanded && isLong ? "…" : ""}
+                        {isExpanded ? entry.content : entry.content.slice(0, 220).trim()}{!isExpanded && isLong ? "..." : ""}
                       </p>
 
-                      <div className="flex items-center gap-3 mt-2 flex-wrap">
+                      <div className="flex items-center gap-3 mt-2.5 flex-wrap">
                         {isLong && (
                           <button
                             onClick={() => setExpandedId(isExpanded ? null : entry.id)}
@@ -204,7 +224,7 @@ export default function EntriesPage() {
                         {entry.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1">
                             {entry.tags.map((tag) => (
-                              <span key={tag} className="px-1.5 py-0.5 rounded text-xs bg-gray-800 text-gray-400">{tag}</span>
+                              <span key={tag} className="px-1.5 py-0.5 rounded-md text-xs bg-white/[0.05] text-gray-400 border border-white/[0.06]">{tag}</span>
                             ))}
                           </div>
                         )}
@@ -212,7 +232,7 @@ export default function EntriesPage() {
                       </div>
 
                       {isExpanded && entry.notes && (
-                        <div className="mt-3 pt-3 border-t border-gray-800">
+                        <div className="mt-3 pt-3 border-t border-white/[0.06]">
                           <p className="text-xs text-gray-500 mb-1">Notes</p>
                           <p className="text-sm text-gray-400 whitespace-pre-wrap">{entry.notes}</p>
                         </div>
@@ -223,10 +243,10 @@ export default function EntriesPage() {
                       <button
                         onClick={() => handleDelete(entry.id)}
                         disabled={deletingId === entry.id}
-                        className="shrink-0 text-xs text-gray-600 hover:text-red-400 disabled:opacity-40 transition-colors px-1"
+                        className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-xs text-gray-600 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-40 transition-all"
                         title="Delete"
                       >
-                        {deletingId === entry.id ? "…" : "✕"}
+                        {deletingId === entry.id ? "..." : "\u2715"}
                       </button>
                     )}
                   </div>
@@ -242,17 +262,17 @@ export default function EntriesPage() {
             <button
               onClick={() => fetchEntries(page - 1)}
               disabled={page === 1 || loading}
-              className="px-3 py-1.5 text-sm rounded-md bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-gray-300 transition-colors"
+              className="px-4 py-2 text-sm rounded-lg bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.06] disabled:opacity-30 text-gray-300 transition-all"
             >
-              ← Prev
+              Prev
             </button>
-            <span className="text-sm text-gray-500">{page} / {pages}</span>
+            <span className="text-sm text-gray-500 tabular-nums">{page} / {pages}</span>
             <button
               onClick={() => fetchEntries(page + 1)}
               disabled={page === pages || loading}
-              className="px-3 py-1.5 text-sm rounded-md bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-gray-300 transition-colors"
+              className="px-4 py-2 text-sm rounded-lg bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.06] disabled:opacity-30 text-gray-300 transition-all"
             >
-              Next →
+              Next
             </button>
           </div>
         )}

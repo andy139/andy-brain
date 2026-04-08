@@ -25,13 +25,13 @@ function renderMarkdown(text: string): string {
   // Fenced code blocks: ```...```
   html = html.replace(
     /```(?:\w*)\n([\s\S]*?)```/g,
-    '<pre class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 my-2 overflow-x-auto text-xs leading-relaxed font-mono"><code>$1</code></pre>'
+    '<pre class="bg-black/40 border border-white/[0.06] rounded-lg px-4 py-3 my-2 overflow-x-auto text-xs leading-relaxed font-mono"><code>$1</code></pre>'
   );
 
   // Inline code: `...`
   html = html.replace(
     /`([^`\n]+)`/g,
-    '<code class="bg-gray-800 text-indigo-300 px-1.5 py-0.5 rounded text-xs font-mono">$1</code>'
+    '<code class="bg-indigo-500/10 text-indigo-300 px-1.5 py-0.5 rounded text-xs font-mono border border-indigo-500/10">$1</code>'
   );
 
   // Headers: ## or ### at start of line
@@ -230,29 +230,40 @@ export default function ChatInterface() {
       {/* Message list */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 scrollbar-thin">
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center gap-4 px-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="40"
-              height="40"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-gray-600"
-            >
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-            <p className="text-sm text-gray-600">Ask anything from your knowledge base</p>
+          <div className="flex flex-col items-center justify-center h-full text-center gap-6 px-4 animate-fade-in">
+            {/* Brain icon with glow */}
+            <div className="relative">
+              <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-xl animate-glow" />
+              <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border border-white/[0.08] flex items-center justify-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-indigo-400"
+                >
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </div>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 max-w-xl w-full">
-              {suggestions.map((q) => (
+            <div>
+              <p className="text-sm text-gray-400 mb-1">Ask anything from your knowledge base</p>
+              <p className="text-xs text-gray-600">I&apos;ll search through everything you&apos;ve saved</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-1 max-w-xl w-full">
+              {suggestions.map((q, i) => (
                 <button
                   key={q}
                   onClick={() => sendMessage(q)}
-                  className="text-left text-sm px-4 py-3 rounded-xl border border-gray-800 bg-gray-900/50 text-gray-400 hover:text-gray-200 hover:border-indigo-600/50 hover:bg-gray-900 transition-all duration-150"
+                  className="suggestion-card text-left text-sm px-4 py-3.5 rounded-xl border border-white/[0.06] bg-white/[0.03] text-gray-400 hover:text-gray-200 hover:border-indigo-500/30 hover:bg-indigo-500/[0.05] transition-all duration-200 animate-fade-in-up"
+                  style={{ animationDelay: `${i * 75}ms`, animationFillMode: "both" }}
                 >
                   {q}
                 </button>
@@ -264,22 +275,22 @@ export default function ChatInterface() {
         {messages.map((msg, i) => (
           <div
             key={i}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-slide-up`}
           >
             <div
               className={`${msg.role === "user" ? "max-w-[85%] sm:max-w-[70%]" : "w-full max-w-3xl"}`}
             >
               {/* Bubble */}
               {msg.role === "user" ? (
-                <div className="rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap bg-indigo-600 text-white rounded-br-sm">
+                <div className="rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-br-sm shadow-lg shadow-indigo-500/10">
                   {msg.content}
                 </div>
               ) : (
                 <div
                   className={`rounded-2xl px-4 py-3 text-sm leading-relaxed rounded-bl-sm ${
                     msg.error
-                      ? "bg-red-950 border border-red-800 text-red-300"
-                      : "bg-gray-900 border border-gray-800 text-gray-100"
+                      ? "bg-red-500/10 border border-red-500/20 text-red-300"
+                      : "bg-white/[0.04] border border-white/[0.06] text-gray-100"
                   }`}
                 >
                   {msg.content ? (
@@ -289,7 +300,7 @@ export default function ChatInterface() {
                     />
                   ) : null}
                   {isStreaming && i === messages.length - 1 && (
-                    <span className="inline-block w-1.5 h-4 bg-gray-400 animate-pulse ml-0.5 rounded-sm align-middle" />
+                    <span className="inline-block w-1.5 h-4 bg-indigo-400 animate-pulse ml-0.5 rounded-sm align-middle" />
                   )}
                 </div>
               )}
@@ -299,7 +310,7 @@ export default function ChatInterface() {
                 msg.sources &&
                 msg.sources.length > 0 && (
                   <div className="mt-3 space-y-2">
-                    <p className="text-xs text-gray-600 px-1">Sources</p>
+                    <p className="text-xs text-gray-500 px-1">Sources</p>
                     {msg.sources.map((src) => (
                       <SourceCard key={src.id} source={src} />
                     ))}
@@ -313,22 +324,22 @@ export default function ChatInterface() {
       </div>
 
       {/* Input bar */}
-      <div className="px-2 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-gray-800 shrink-0">
-        <div className="flex gap-2 items-end max-w-3xl mx-auto">
+      <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-white/[0.06] shrink-0">
+        <div className="flex gap-2.5 items-end max-w-3xl mx-auto">
           <textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask something…"
+            placeholder="Ask something..."
             rows={1}
-            className="flex-1 resize-none rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-600 transition-colors leading-relaxed max-h-40 overflow-y-auto scrollbar-thin"
+            className="flex-1 resize-none rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-gray-100 placeholder-gray-500 focus:outline-none input-glow transition-all leading-relaxed max-h-40 overflow-y-auto scrollbar-thin"
             style={{ fieldSizing: "content" } as React.CSSProperties}
           />
           <button
             onClick={() => sendMessage()}
             disabled={!input.trim() || isStreaming}
-            className="shrink-0 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-3 text-sm font-medium text-white transition-colors"
+            className="shrink-0 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed px-5 py-3 text-sm font-medium text-white transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 disabled:shadow-none"
           >
             {isStreaming ? (
               <span className="flex items-center gap-1.5">
@@ -337,11 +348,14 @@ export default function ChatInterface() {
                 <span className="w-1 h-1 bg-white rounded-full animate-bounce [animation-delay:300ms]" />
               </span>
             ) : (
-              "Send"
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
             )}
           </button>
         </div>
-        <p className="text-xs text-gray-700 text-center mt-2">
+        <p className="text-[11px] text-gray-600 text-center mt-2 tracking-wide">
           Shift+Enter for new line
         </p>
       </div>

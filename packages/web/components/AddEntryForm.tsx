@@ -103,6 +103,8 @@ export default function AddEntryForm() {
     status !== "loading" &&
     (mode === "pdf" ? !!pdfFile : !!content.trim());
 
+  const inputClass = "w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none input-glow transition-all";
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Mode toggle */}
@@ -112,10 +114,10 @@ export default function AddEntryForm() {
             key={m}
             type="button"
             onClick={() => setMode(m)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
               mode === m
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-800 text-gray-400 hover:text-gray-200"
+                ? "bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/20"
+                : "bg-white/[0.06] border border-white/[0.06] text-gray-400 hover:text-gray-200 hover:bg-white/[0.1]"
             }`}
           >
             {m === "text" ? "Text / URL" : "PDF"}
@@ -127,7 +129,7 @@ export default function AddEntryForm() {
         <>
           {/* Content */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1.5">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
               Content <span className="text-red-400">*</span>
             </label>
             <textarea
@@ -135,18 +137,18 @@ export default function AddEntryForm() {
               onChange={(e) => setContent(e.target.value)}
               required
               rows={8}
-              placeholder="Paste article text, a note, a tweet, or any content you want to save…"
-              className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-600 transition-colors resize-y"
+              placeholder="Paste article text, a note, a tweet, or any content you want to save..."
+              className={`${inputClass} resize-y`}
             />
           </div>
 
           {/* Source type */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1.5">Source type</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Source type</label>
             <select
               value={sourceType}
               onChange={(e) => setSourceType(e.target.value as SourceType)}
-              className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-indigo-600 transition-colors"
+              className={inputClass}
             >
               {SOURCE_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -156,7 +158,7 @@ export default function AddEntryForm() {
 
           {/* Source URL */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1.5">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
               Source URL
               {sourceType === "article" && (
                 <span className="ml-2 text-xs text-indigo-400">
@@ -168,20 +170,22 @@ export default function AddEntryForm() {
               type="url"
               value={sourceUrl}
               onChange={(e) => setSourceUrl(e.target.value)}
-              placeholder="https://…"
-              className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-2.5 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-600 transition-colors"
+              placeholder="https://..."
+              className={inputClass}
             />
           </div>
         </>
       ) : (
         /* PDF upload */
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1.5">
+          <label className="block text-sm font-medium text-gray-300 mb-2">
             PDF file <span className="text-red-400">*</span>
           </label>
           <div
-            className={`relative rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors ${
-              pdfFile ? "border-indigo-600 bg-indigo-950/20" : "border-gray-700 hover:border-gray-500"
+            className={`relative rounded-xl border-2 border-dashed px-6 py-12 text-center transition-all duration-200 ${
+              pdfFile
+                ? "border-indigo-500/40 bg-indigo-500/[0.05]"
+                : "border-white/[0.1] hover:border-white/[0.2] hover:bg-white/[0.02]"
             }`}
           >
             <input
@@ -206,7 +210,7 @@ export default function AddEntryForm() {
 
       {/* Tags */}
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-1.5">
+        <label className="block text-sm font-medium text-gray-300 mb-2">
           Tags <span className="text-gray-500 font-normal">comma-separated</span>
         </label>
         <input
@@ -214,25 +218,25 @@ export default function AddEntryForm() {
           value={tagsRaw}
           onChange={(e) => setTagsRaw(e.target.value)}
           placeholder="ai, productivity, health"
-          className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-2.5 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-600 transition-colors"
+          className={inputClass}
         />
       </div>
 
       {/* Notes */}
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-1.5">Personal notes</label>
+        <label className="block text-sm font-medium text-gray-300 mb-2">Personal notes</label>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
           placeholder="Why are you saving this? What's interesting about it?"
-          className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-600 transition-colors resize-y"
+          className={`${inputClass} resize-y`}
         />
       </div>
 
       {/* API key */}
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-1.5">
+        <label className="block text-sm font-medium text-gray-300 mb-2">
           API key <span className="text-gray-500 font-normal">your AUTH_TOKEN</span>
         </label>
         <input
@@ -241,13 +245,13 @@ export default function AddEntryForm() {
           onChange={(e) => setApiKey(e.target.value)}
           required
           placeholder="••••••••"
-          className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-2.5 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-600 transition-colors"
+          className={inputClass}
         />
       </div>
 
       {/* Status messages */}
       {status === "success" && result && (
-        <div className="rounded-lg border border-green-800 bg-green-950/50 px-4 py-3 text-sm text-green-300">
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300 animate-fade-in">
           {result.filename ? `"${result.filename}" saved! ` : "Saved! "}
           {result.chunks_created} chunk{result.chunks_created !== 1 ? "s" : ""} indexed.{" "}
           <button type="button" onClick={() => router.push("/")} className="underline hover:no-underline">
@@ -257,7 +261,7 @@ export default function AddEntryForm() {
       )}
 
       {status === "error" && (
-        <div className="rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-300">
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300 animate-fade-in">
           {errorMsg}
         </div>
       )}
@@ -266,9 +270,9 @@ export default function AddEntryForm() {
       <button
         type="submit"
         disabled={!canSubmit}
-        className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-3 text-sm font-medium text-white transition-colors"
+        className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed px-4 py-3.5 text-sm font-medium text-white transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 disabled:shadow-none"
       >
-        {status === "loading" ? "Saving…" : mode === "pdf" ? "Upload PDF" : "Save to knowledge base"}
+        {status === "loading" ? "Saving..." : mode === "pdf" ? "Upload PDF" : "Save to knowledge base"}
       </button>
     </form>
   );

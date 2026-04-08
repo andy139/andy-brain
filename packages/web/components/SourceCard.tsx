@@ -19,11 +19,11 @@ const TYPE_ICON: Record<string, string> = {
 };
 
 const TYPE_COLOR: Record<string, string> = {
-  tiktok: "bg-pink-900/50 text-pink-300 border-pink-800",
-  x: "bg-sky-900/50 text-sky-300 border-sky-800",
-  article: "bg-violet-900/50 text-violet-300 border-violet-800",
-  note: "bg-amber-900/50 text-amber-300 border-amber-800",
-  other: "bg-gray-800/50 text-gray-300 border-gray-700",
+  tiktok: "bg-pink-500/10 text-pink-400 border-pink-500/20",
+  x: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+  article: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+  note: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  other: "bg-gray-500/10 text-gray-400 border-gray-500/20",
 };
 
 export default function SourceCard({ source }: { source: Source }) {
@@ -36,16 +36,16 @@ export default function SourceCard({ source }: { source: Source }) {
     : null;
 
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-900/50 text-sm overflow-hidden">
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] text-sm overflow-hidden card-glow">
       {/* Compact header row — always visible */}
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
-        className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-gray-800/50 transition-colors"
+        className="flex items-center gap-2.5 w-full px-3 py-2.5 text-left hover:bg-white/[0.03] transition-colors"
       >
         {/* Type badge */}
         <span
-          className={`shrink-0 flex items-center justify-center w-6 h-6 rounded border text-[10px] font-bold ${colorClass}`}
+          className={`shrink-0 flex items-center justify-center w-6 h-6 rounded-md border text-[10px] font-bold ${colorClass}`}
         >
           {icon}
         </span>
@@ -68,7 +68,7 @@ export default function SourceCard({ source }: { source: Source }) {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={`shrink-0 text-gray-600 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`}
+          className={`shrink-0 text-gray-600 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
@@ -76,7 +76,7 @@ export default function SourceCard({ source }: { source: Source }) {
 
       {/* Expanded details */}
       {expanded && (
-        <div className="px-3 pb-3 pt-1 border-t border-gray-800/50 space-y-2">
+        <div className="px-3 pb-3 pt-1 border-t border-white/[0.04] space-y-2 animate-slide-up">
           {/* Full URL link */}
           {source.source_url && (
             <a
@@ -98,7 +98,7 @@ export default function SourceCard({ source }: { source: Source }) {
               {source.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="px-1.5 py-0.5 rounded text-[10px] bg-gray-800 text-gray-400"
+                  className="px-1.5 py-0.5 rounded-md text-[10px] bg-white/[0.05] text-gray-400 border border-white/[0.06]"
                 >
                   {tag}
                 </span>
