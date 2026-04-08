@@ -321,29 +321,45 @@ export default function ChatInterface() {
                 </div>
               )}
 
-              {/* Source attribution cards */}
+              {/* Sources — compact inline pills, max 3 */}
               {msg.role === "assistant" &&
                 msg.sources &&
                 msg.sources.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-xs text-gray-500 px-1">Sources</p>
-                    {msg.sources.map((src) => (
-                      <SourceCard key={src.id} source={src} />
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    {msg.sources.slice(0, 3).map((src) => (
+                      <a
+                        key={src.id}
+                        href={src.source_url ?? "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-[11px] pl-1.5 pr-2.5 py-1 rounded-full border border-white/[0.06] bg-white/[0.03] text-gray-400 hover:text-gray-200 hover:border-indigo-500/30 hover:bg-indigo-500/[0.05] transition-all"
+                      >
+                        <span className={`shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold ${
+                          src.source_type === "tiktok" ? "bg-pink-500/15 text-pink-400" :
+                          src.source_type === "article" ? "bg-violet-500/15 text-violet-400" :
+                          "bg-gray-500/15 text-gray-400"
+                        }`}>
+                          {src.source_type === "tiktok" ? "T" : src.source_type === "article" ? "A" : "N"}
+                        </span>
+                        <span className="truncate max-w-[180px]">
+                          {(src.title ?? "").replace(/^(Transcript|Source|Summary):\s*/i, "").slice(0, 50)}
+                        </span>
+                      </a>
                     ))}
                   </div>
                 )}
 
-              {/* Follow-up question chips */}
+              {/* Follow-up chips — small, tappable */}
               {msg.role === "assistant" &&
                 !isStreaming &&
                 msg.followups &&
                 msg.followups.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mt-2 flex flex-wrap gap-1.5">
                     {msg.followups.map((q) => (
                       <button
                         key={q}
                         onClick={() => sendMessage(q)}
-                        className="text-xs px-3 py-2 rounded-lg border border-indigo-500/20 bg-indigo-500/[0.06] text-indigo-300 hover:bg-indigo-500/[0.12] hover:border-indigo-500/40 hover:text-indigo-200 transition-all duration-150"
+                        className="text-[11px] px-2.5 py-1.5 rounded-full border border-indigo-500/15 bg-indigo-500/[0.04] text-indigo-300/80 hover:bg-indigo-500/[0.1] hover:border-indigo-500/30 hover:text-indigo-200 transition-all duration-150"
                       >
                         {q}
                       </button>

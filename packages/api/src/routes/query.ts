@@ -148,11 +148,11 @@ app.post("/query", zValidator("json", querySchema), async (c) => {
             content: `You're helping someone learn from their saved TikToks, articles, and notes. They just asked a question and got an answer. Now suggest 3 follow-up questions that help them GO DEEPER and actually APPLY what they learned.
 
 Think like a curious learner:
-- 1 question that connects this to something else they might have saved ("how does this relate to X?")
-- 1 question that makes it actionable ("how would I actually implement/use this?")
-- 1 question that challenges or extends the idea ("what's the downside?" or "what's the next level?")
+- 1 that connects to other topics ("how does this relate to X?")
+- 1 that's actionable ("how do I actually use this?")
+- 1 that goes deeper ("what's the catch?" or "what's next?")
 
-Be specific to the actual content. No generic crap like "tell me more." Under 50 chars each. Return ONLY a JSON array of 3 strings.
+Be specific. No generic "tell me more." UNDER 35 CHARS EACH. Return ONLY a JSON array of 3 strings.
 
 Question: "${question}"
 Answer: "${fullAnswer.slice(0, 500)}"`,
