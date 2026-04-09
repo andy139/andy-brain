@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import SourceCard, { type Source } from "./SourceCard";
+import { useSearchParams } from "next/navigation";
+import { type Source } from "./SourceCard";
 
 export type Message = {
   role: "user" | "assistant";
@@ -121,14 +122,17 @@ const FALLBACK_SUGGESTIONS = [
 ];
 
 export default function ChatInterface({ messages, setMessages, onMessagesChange }: ChatInterfaceProps) {
+  const searchParams = useSearchParams();
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [streamPhase, setStreamPhase] = useState<"searching" | "receiving" | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>(FALLBACK_SUGGESTIONS);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const inFlightRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const autoSentRef = useRef(false);
 
   // Fetch dynamic suggestions from the API on mount
   useEffect(() => {
@@ -177,6 +181,18 @@ export default function ChatInterface({ messages, setMessages, onMessagesChange 
     return () => document.removeEventListener("keydown", handler);
   }, []);
 
+  // Auto-send from URL param (?q=...)
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q && !autoSentRef.current) {
+      autoSentRef.current = true;
+      // Small delay so the component is fully mounted
+      const timer = setTimeout(() => sendMessage(q), 100);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   const sendMessage = async (override?: string) => {
     const question = override ?? input.trim();
     if (!question || inFlightRef.current) return;
@@ -184,6 +200,7 @@ export default function ChatInterface({ messages, setMessages, onMessagesChange 
 
     setInput("");
     setIsStreaming(true);
+    setStreamPhase("searching");
 
     let assistantIdx = -1;
     setMessages((prev) => {
@@ -212,12 +229,18 @@ export default function ChatInterface({ messages, setMessages, onMessagesChange 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let receivedFirstChunk = false;
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
+
+        if (!receivedFirstChunk) {
+          receivedFirstChunk = true;
+          setStreamPhase("receiving");
+        }
 
         const sentinelIdx = buffer.indexOf(SOURCES_SENTINEL);
         const displayText =
@@ -270,6 +293,7 @@ export default function ChatInterface({ messages, setMessages, onMessagesChange 
     } finally {
       inFlightRef.current = false;
       setIsStreaming(false);
+      setStreamPhase(null);
       textareaRef.current?.focus();
     }
   };
@@ -350,13 +374,21 @@ export default function ChatInterface({ messages, setMessages, onMessagesChange 
                         : "bg-white/[0.04] border border-white/[0.06] text-gray-100"
                     }`}
                   >
+                    {/* Phase 1: "Searching your brain..." before any text arrives */}
+                    {isStreaming && i === messages.length - 1 && streamPhase === "searching" && !msg.content && (
+                      <div className="flex items-center gap-2 py-1">
+                        <span className="inline-block w-2 h-2 rounded-full bg-indigo-400/60 animate-pulse" />
+                        <span className="text-sm text-indigo-300/70 animate-pulse">Searching your brain...</span>
+                      </div>
+                    )}
                     {msg.content ? (
                       <div
                         className="markdown-body"
                         dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
                       />
                     ) : null}
-                    {isStreaming && i === messages.length - 1 && (
+                    {/* Phase 2: cursor pulse once text is streaming in */}
+                    {isStreaming && i === messages.length - 1 && streamPhase === "receiving" && (
                       <span className="inline-block w-1.5 h-4 bg-indigo-400 animate-pulse ml-0.5 rounded-sm align-middle" />
                     )}
                   </div>
