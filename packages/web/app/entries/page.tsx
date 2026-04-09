@@ -1,9 +1,19 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
+
+const SOURCE_FILTERS = [
+  { key: "all", label: "All" },
+  { key: "tiktok", label: "TikTok" },
+  { key: "article", label: "Article" },
+  { key: "note", label: "Note" },
+  { key: "x", label: "X" },
+  { key: "other", label: "Other" },
+] as const;
 
 const TYPE_LABEL: Record<string, string> = {
   tiktok: "TK",
@@ -32,6 +42,7 @@ type Entry = {
 };
 
 export default function EntriesPage() {
+  const router = useRouter();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -43,6 +54,33 @@ export default function EntriesPage() {
   const [apiKey, setApiKey] = useState("");
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [keySet, setKeySet] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+
+  const filteredEntries = useMemo(() => {
+    let filtered = entries;
+    if (sourceFilter !== "all") {
+      filtered = filtered.filter((e) => e.source_type === sourceFilter);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (e) =>
+          e.content.toLowerCase().includes(q) ||
+          e.tags.some((t) => t.toLowerCase().includes(q))
+      );
+    }
+    return filtered;
+  }, [entries, searchQuery, sourceFilter]);
+
+  function askAboutEntry(entry: Entry) {
+    const topic =
+      entry.tags.length > 0
+        ? entry.tags[0]
+        : entry.content.slice(0, 60).trim().replace(/\s+/g, " ");
+    const q = `Summarize what I saved about ${topic}`;
+    router.push(`/?q=${encodeURIComponent(q)}`);
+  }
 
   const fetchEntries = useCallback(async (p: number) => {
     setLoading(true);
@@ -114,6 +152,38 @@ export default function EntriesPage() {
           </Link>
         </div>
 
+        {/* Search & filters */}
+        <div className="mb-6 space-y-3">
+          <div className="relative">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search entries by content or tags..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl pl-10 pr-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none input-glow transition-all"
+            />
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {SOURCE_FILTERS.map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setSourceFilter(f.key)}
+                className={`px-3 py-1.5 text-xs rounded-lg border transition-all duration-200 ${
+                  sourceFilter === f.key
+                    ? "bg-indigo-600/20 border-indigo-500/30 text-indigo-300"
+                    : "bg-white/[0.03] border-white/[0.06] text-gray-400 hover:text-gray-200 hover:border-white/[0.12]"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* API key for deletes */}
         {!keySet ? (
           <div className="mb-6 p-4 rounded-xl border border-white/[0.06] bg-white/[0.03]">
@@ -166,7 +236,7 @@ export default function EntriesPage() {
           <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-400 text-sm">{error}</div>
         )}
 
-        {!loading && !error && entries.length === 0 && (
+        {!loading && !error && entries.length === 0 && !searchQuery && sourceFilter === "all" && (
           <div className="text-center py-20">
             <div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mx-auto mb-4">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600">
@@ -179,9 +249,21 @@ export default function EntriesPage() {
           </div>
         )}
 
-        {!loading && !error && entries.length > 0 && (
+        {!loading && !error && entries.length > 0 && filteredEntries.length === 0 && (
+          <div className="text-center py-16">
+            <p className="text-sm text-gray-500">No entries match your search</p>
+            <button
+              onClick={() => { setSearchQuery(""); setSourceFilter("all"); }}
+              className="text-xs text-indigo-400 hover:text-indigo-300 mt-2 transition-colors"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && filteredEntries.length > 0 && (
           <div className="space-y-3">
-            {entries.map((entry, idx) => {
+            {filteredEntries.map((entry, idx) => {
               const icon = TYPE_LABEL[entry.source_type] ?? "?";
               const color = TYPE_COLOR[entry.source_type] ?? TYPE_COLOR.other;
               const isExpanded = expandedId === entry.id;
@@ -239,16 +321,27 @@ export default function EntriesPage() {
                       )}
                     </div>
 
-                    {keySet && (
+                    <div className="shrink-0 flex flex-col gap-1">
                       <button
-                        onClick={() => handleDelete(entry.id)}
-                        disabled={deletingId === entry.id}
-                        className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-xs text-gray-600 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-40 transition-all"
-                        title="Delete"
+                        onClick={() => askAboutEntry(entry)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all"
+                        title="Ask about this"
                       >
-                        {deletingId === entry.id ? "..." : "\u2715"}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
                       </button>
-                    )}
+                      {keySet && (
+                        <button
+                          onClick={() => handleDelete(entry.id)}
+                          disabled={deletingId === entry.id}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-xs text-gray-600 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-40 transition-all"
+                          title="Delete"
+                        >
+                          {deletingId === entry.id ? "..." : "\u2715"}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
