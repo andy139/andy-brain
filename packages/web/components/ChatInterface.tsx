@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import SourceCard, { type Source } from "./SourceCard";
 
-type Message = {
+export type Message = {
   role: "user" | "assistant";
   content: string;
   sources?: Source[];
   followups?: string[];
   error?: boolean;
+};
+
+type ChatInterfaceProps = {
+  messages: Message[];
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  onMessagesChange?: (messages: Message[]) => void;
 };
 
 /**
@@ -114,11 +120,11 @@ const FALLBACK_SUGGESTIONS = [
   "What open source tools did I bookmark?",
 ];
 
-export default function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([]);
+export default function ChatInterface({ messages, setMessages, onMessagesChange }: ChatInterfaceProps) {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>(FALLBACK_SUGGESTIONS);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const inFlightRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -136,6 +142,40 @@ export default function ChatInterface() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Notify parent when messages change (for persistence)
+  useEffect(() => {
+    if (messages.length > 0) {
+      onMessagesChange?.(messages);
+    }
+  }, [messages, onMessagesChange]);
+
+  // Copy assistant message to clipboard
+  const handleCopy = useCallback(async (text: string, idx: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx(null), 1500);
+    } catch {
+      // clipboard API unavailable — ignore
+    }
+  }, []);
+
+  // Keyboard shortcuts: Cmd/Ctrl+K to focus textarea, Escape to clear input
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        textareaRef.current?.focus();
+      }
+      if (e.key === "Escape" && document.activeElement === textareaRef.current) {
+        e.preventDefault();
+        setInput("");
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   const sendMessage = async (override?: string) => {
     const question = override ?? input.trim();
@@ -302,21 +342,42 @@ export default function ChatInterface() {
                   {msg.content}
                 </div>
               ) : (
-                <div
-                  className={`rounded-2xl px-4 py-3 text-sm leading-relaxed rounded-bl-sm ${
-                    msg.error
-                      ? "bg-red-500/10 border border-red-500/20 text-red-300"
-                      : "bg-white/[0.04] border border-white/[0.06] text-gray-100"
-                  }`}
-                >
-                  {msg.content ? (
-                    <div
-                      className="markdown-body"
-                      dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
-                    />
-                  ) : null}
-                  {isStreaming && i === messages.length - 1 && (
-                    <span className="inline-block w-1.5 h-4 bg-indigo-400 animate-pulse ml-0.5 rounded-sm align-middle" />
+                <div className="group relative">
+                  <div
+                    className={`rounded-2xl px-4 py-3 text-sm leading-relaxed rounded-bl-sm ${
+                      msg.error
+                        ? "bg-red-500/10 border border-red-500/20 text-red-300"
+                        : "bg-white/[0.04] border border-white/[0.06] text-gray-100"
+                    }`}
+                  >
+                    {msg.content ? (
+                      <div
+                        className="markdown-body"
+                        dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                      />
+                    ) : null}
+                    {isStreaming && i === messages.length - 1 && (
+                      <span className="inline-block w-1.5 h-4 bg-indigo-400 animate-pulse ml-0.5 rounded-sm align-middle" />
+                    )}
+                  </div>
+                  {/* Copy button — visible on hover */}
+                  {msg.content && (
+                    <button
+                      onClick={() => handleCopy(msg.content, i)}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg border border-white/[0.06] bg-white/[0.04] text-gray-500 opacity-0 group-hover:opacity-100 hover:text-indigo-300 hover:border-indigo-500/30 hover:bg-indigo-500/[0.08] transition-all duration-150"
+                      aria-label="Copy message"
+                    >
+                      {copiedIdx === i ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </svg>
+                      )}
+                    </button>
                   )}
                 </div>
               )}
@@ -406,7 +467,7 @@ export default function ChatInterface() {
           </button>
         </div>
         <p className="text-[11px] text-gray-600 text-center mt-2 tracking-wide">
-          Shift+Enter for new line
+          Shift+Enter for new line &middot; &#8984;K to focus &middot; Esc to clear
         </p>
       </div>
     </div>
